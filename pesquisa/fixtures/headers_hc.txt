@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Date: Thu, 22 Oct 2026 22:26:44 GMT
+Server: Apache/2.4.6 () OpenSSL/1.0.2k-fips
+Last-Modified: Tue, 06 Oct 2026 16:00:04 GMT
+ETag: "9c4cc-65d2e178903d5"
+Accept-Ranges: bytes
+Content-Length: 640204
+Content-Type: text/csv
+
+body: 640,204 bytes, ASCII, LF, 27,181 records (not kept); hc_head.csv is the header plus the first 50 of those records, cut byte for byte.

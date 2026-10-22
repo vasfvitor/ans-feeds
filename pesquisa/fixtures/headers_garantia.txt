@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Date: Thu, 22 Oct 2026 22:26:42 GMT
+Server: Apache/2.4.6 () OpenSSL/1.0.2k-fips
+Last-Modified: Sat, 10 Oct 2026 11:00:03 GMT
+ETag: "37f3ec-65d7a5df355d0"
+Accept-Ranges: bytes
+Content-Length: 3666924
+Content-Type: text/csv
+
+body: 3,666,924 bytes, UTF-8, LF, 33,025 records (not kept); garantia_head.csv is the header plus the first 50 of those records, cut byte for byte.

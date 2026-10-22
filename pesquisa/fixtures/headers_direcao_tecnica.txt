@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Date: Thu, 22 Oct 2026 22:26:42 GMT
+Server: Apache/2.4.6 () OpenSSL/1.0.2k-fips
+Last-Modified: Mon, 19 Jan 2026 18:54:45 GMT
+ETag: "262a-648c2397f830a"
+Accept-Ranges: bytes
+Content-Length: 9770
+Content-Type: text/csv
+
+body: 9,770 bytes, UTF-8, CRLF, 118 records (not kept); direcao_tecnica_head.csv is the header plus the first 50 of those records, cut byte for byte.

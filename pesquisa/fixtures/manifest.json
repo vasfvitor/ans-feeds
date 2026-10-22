@@ -1,0 +1,132 @@
+{
+  "recorded": "2026-10-22",
+  "notes": "Arquivos reais do FTP de dados abertos da ANS, https://dadosabertos.ans.gov.br/FTP/PDA/ (sem auth, sem robots.txt). headers_*.txt guarda a resposta HTTP (curl -D) e uma nota; *_head.csv o cabeçalho mais os primeiros 50 registros, copiados byte a byte (nunca reencodar; .gitattributes marca -text). Nenhum campo tem quebra de linha. Os casos que os 50 primeiros não cobrem estão em *_casos.csv (cabeçalho + linhas inteiras escolhidas por regex, também byte a byte; ver cases_cover).",
+  "responses": [
+    {
+      "name": "cadop_ativas",
+      "method": "GET",
+      "path": "/FTP/PDA/operadoras_de_plano_de_saude_ativas/Relatorio_cadop.csv",
+      "status": 200,
+      "file": "headers_cadop_ativas.txt",
+      "sample": "cadop_ativas_head.csv",
+      "note": "346,860 bytes, UTF-8, 1,106 records, not kept"
+    },
+    {
+      "name": "cadop_canceladas",
+      "method": "GET",
+      "path": "/FTP/PDA/operadoras_de_plano_de_saude_canceladas/Relatorio_cadop_canceladas.csv",
+      "status": 200,
+      "file": "headers_cadop_canceladas.txt",
+      "sample": "cadop_canceladas_head.csv",
+      "note": "1,036,861 bytes, UTF-8, 3,078 records, not kept"
+    },
+    {
+      "name": "igr",
+      "method": "GET",
+      "path": "/FTP/PDA/IGR/IGR_versao_2023/pda-023-igr.csv",
+      "status": 200,
+      "file": "headers_igr.txt",
+      "sample": "igr_head.csv",
+      "note": "17,422,407 bytes, UTF-8, 129,188 records, not kept",
+      "cases": "igr_casos.csv",
+      "cases_cover": {
+        "DT_ATUALIZACAO vazio (competência ≤ 2019-04)": 3,
+        "registro repetido com duas razões sociais em 2019-04": 3,
+        "IGR com 1 casa (2015-2018)": 1
+      }
+    },
+    {
+      "name": "tr",
+      "method": "GET",
+      "path": "/FTP/PDA/taxa_de_resolutividade/pda-048-taxa_de_resolutividade.csv",
+      "status": 200,
+      "file": "headers_tr.txt",
+      "sample": "tr_head.csv",
+      "note": "6,784,117 bytes, UTF-8, 63,366 records, not kept"
+    },
+    {
+      "name": "idss_2016_2025",
+      "method": "GET",
+      "path": "/FTP/PDA/historico_idss-020/pda-020-historico-idss-2016_2025.csv",
+      "status": 200,
+      "file": "headers_idss_2016_2025.txt",
+      "sample": "idss_2016_2025_head.csv",
+      "note": "793,151 bytes, UTF-8, 1,885 records, not kept",
+      "cases": "idss_2016_2025_casos.csv",
+      "cases_cover": {
+        "todas as células ND (Sul América 000043, incorporada em 2013)": 1
+      }
+    },
+    {
+      "name": "direcao_tecnica",
+      "method": "GET",
+      "path": "/FTP/PDA/regimes_especiais_direcao_tecnica/pda-040-regimes_especiais_direcao_tecnica.csv",
+      "status": 200,
+      "file": "headers_direcao_tecnica.txt",
+      "sample": "direcao_tecnica_head.csv",
+      "note": "9,770 bytes, UTF-8, 118 records, not kept"
+    },
+    {
+      "name": "prudencial",
+      "method": "GET",
+      "path": "/FTP/PDA/classificacao_prudencial-056/pda-056-classificacao_prudencial.csv",
+      "status": 200,
+      "file": "headers_prudencial.txt",
+      "sample": "prudencial_head.csv",
+      "note": "333,402 bytes, ASCII, 12,346 records, not kept"
+    },
+    {
+      "name": "garantia",
+      "method": "GET",
+      "path": "/FTP/PDA/monitoramento_garantia_atendimento/monit_garantia_atendimento.csv",
+      "status": 200,
+      "file": "headers_garantia.txt",
+      "sample": "garantia_head.csv",
+      "note": "3,666,924 bytes, UTF-8, 33,025 records, not kept",
+      "cases": "garantia_casos.csv",
+      "cases_cover": {
+        "registro sem zero à esquerda (inteiro sem aspas)": 3
+      }
+    },
+    {
+      "name": "ressarcimento_indice",
+      "method": "GET",
+      "path": "/FTP/PDA/ressarcimento_ao_SUS_indice_efetivo_pagamento/202609_Indice_de_Efetivo_Pagamento.csv",
+      "status": 200,
+      "file": "headers_ressarcimento_indice.txt",
+      "sample": "ressarcimento_indice_head.csv",
+      "note": "247,895 bytes, UTF-8, 1,683 records, not kept",
+      "cases": "ressarcimento_indice_casos.csv",
+      "cases_cover": {
+        "registro de 5 dígitos": 2
+      }
+    },
+    {
+      "name": "hc",
+      "method": "GET",
+      "path": "/FTP/PDA/hc_ressarcimento_sus/HC_2026.csv",
+      "status": 200,
+      "file": "headers_hc.txt",
+      "sample": "hc_head.csv",
+      "note": "640,204 bytes, ASCII, 27,181 records, not kept",
+      "cases": "hc_casos.csv",
+      "cases_cover": {
+        "registro de 5 dígitos": 3
+      }
+    },
+    {
+      "name": "penalidades",
+      "method": "GET",
+      "path": "/FTP/PDA/penalidades_aplicadas_a_operadoras/penalidades_aplicadas_a_operadoras.csv",
+      "status": 200,
+      "file": "headers_penalidades.txt",
+      "sample": "penalidades_head.csv",
+      "note": "41,160,878 bytes, Latin-1 (ISO-8859-1), 111,928 records, not kept",
+      "cases": "penalidades_casos.csv",
+      "cases_cover": {
+        "registro vazio": 3,
+        "registro de 5 dígitos": 3
+      }
+    }
+  ]
+}

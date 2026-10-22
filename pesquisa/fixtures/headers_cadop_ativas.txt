@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Date: Thu, 22 Oct 2026 22:26:36 GMT
+Server: Apache/2.4.6 () OpenSSL/1.0.2k-fips
+Last-Modified: Thu, 22 Oct 2026 10:00:07 GMT
+ETag: "54aec-65e6aedb4e87f"
+Accept-Ranges: bytes
+Content-Length: 346860
+Content-Type: text/csv
+
+body: 346,860 bytes, UTF-8, LF, 1,106 records (not kept); cadop_ativas_head.csv is the header plus the first 50 of those records, cut byte for byte.

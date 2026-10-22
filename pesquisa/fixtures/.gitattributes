@@ -1,0 +1,2 @@
+# Amostras cortadas byte a byte do FTP da ANS: nunca normalizar fim de linha nem encoding
+*.csv -text

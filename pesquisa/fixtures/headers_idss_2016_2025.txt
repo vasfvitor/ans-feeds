@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Date: Thu, 22 Oct 2026 22:26:41 GMT
+Server: Apache/2.4.6 () OpenSSL/1.0.2k-fips
+Last-Modified: Tue, 23 Jun 2026 12:52:35 GMT
+ETag: "c1a3f-654eb3bb30cea"
+Accept-Ranges: bytes
+Content-Length: 793151
+Content-Type: text/csv
+
+body: 793,151 bytes, UTF-8, CRLF, 1,885 records (not kept); idss_2016_2025_head.csv is the header plus the first 50 of those records, cut byte for byte.

@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Date: Thu, 22 Oct 2026 22:26:45 GMT
+Server: Apache/2.4.6 () OpenSSL/1.0.2k-fips
+Last-Modified: Mon, 05 Oct 2026 12:01:33 GMT
+ETag: "27410ae-65d16a4a43a41"
+Accept-Ranges: bytes
+Content-Length: 41160878
+Content-Type: text/csv
+
+body: 41,160,878 bytes, Latin-1 (ISO-8859-1), LF, 111,928 records (not kept); penalidades_head.csv is the header plus the first 50 of those records, cut byte for byte.

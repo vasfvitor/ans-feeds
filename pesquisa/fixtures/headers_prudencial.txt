@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Date: Thu, 22 Oct 2026 22:26:42 GMT
+Server: Apache/2.4.6 () OpenSSL/1.0.2k-fips
+Last-Modified: Thu, 30 Jul 2026 10:00:11 GMT
+ETag: "5165a-657d12339be2b"
+Accept-Ranges: bytes
+Content-Length: 333402
+Content-Type: text/csv
+
+body: 333,402 bytes, ASCII, LF, 12,346 records (not kept); prudencial_head.csv is the header plus the first 50 of those records, cut byte for byte.

@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Date: Thu, 22 Oct 2026 22:26:37 GMT
+Server: Apache/2.4.6 () OpenSSL/1.0.2k-fips
+Last-Modified: Thu, 22 Oct 2026 10:00:07 GMT
+ETag: "fd23d-65e6aedb6bd40"
+Accept-Ranges: bytes
+Content-Length: 1036861
+Content-Type: text/csv
+
+body: 1,036,861 bytes, UTF-8, LF, 3,078 records (not kept); cadop_canceladas_head.csv is the header plus the first 50 of those records, cut byte for byte.
