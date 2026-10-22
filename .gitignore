@@ -1,0 +1,5 @@
+# Downloads brutos (até 41 MB cada); o que precisa ficar vai para pesquisa/snapshots/
+pesquisa/downloads/
+# Notas locais
+CLAUDE.local.md
+PENDENCIAS.md
