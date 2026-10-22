@@ -396,8 +396,12 @@ extrajudicial.
 
 ## Snapshots e fixtures
 
-- `pesquisa/snapshots/2026-10-22/` (27 MB, `SHA256SUMS`): CADOP ativas e canceladas, IGR, TR, direção
-  técnica, as 4 listas RN 623 do 2T2026 e a página de portabilidade especial.
+- `pesquisa/snapshots/2026-10-22/` (34 MB, 23 arquivos, `SHA256SUMS`):
+  - do FTP: CADOP ativas e canceladas, IGR, TR, direção técnica, prudencial, garantia, HC 2026 e IDSS
+    2016_2025;
+  - do gov.br: as 14 listas RN 623 ainda no ar (3T2025 a 2T2026) e a página de portabilidade especial.
+
+  O `ESTADO.tsv` e o `scripts/snapshot.sh` continuam a série.
 - `pesquisa/fixtures/`: para cada um dos 11 CSVs, `*_head.csv` (cabeçalho + 50 registros, conferido com
   `cmp` contra o começo do arquivo) e `headers_*.txt` (resposta HTTP + nota). Mais `*_casos.csv` em 6
   conjuntos, com as linhas que os 50 primeiros não cobrem (registro sem zero, DT vazia, duplicata de

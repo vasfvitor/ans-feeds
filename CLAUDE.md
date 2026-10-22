@@ -22,11 +22,14 @@ Hoje é só pesquisa: não há pacote, site nem feed. O resultado está em `pesq
 
 ## Estrutura
 
-- `pesquisa/snapshots/AAAA-MM-DD/`: cópias do que não guarda histórico (CADOP diário, IGR e TR
-  revisados retroativamente, PDFs trimestrais da RN 623), com `SHA256SUMS`.
+- `pesquisa/snapshots/AAAA-MM-DD/`: cópias do que a ANS sobrescreve (CADOP diário, IGR e outros
+  arquivos reprocessados, PDFs trimestrais da RN 623), só o que mudou desde o snapshot anterior, com
+  `SHA256SUMS` e `FONTES.tsv`. `pesquisa/snapshots/ESTADO.tsv` guarda o `Last-Modified` e o sha256 da
+  última versão de cada arquivo; gerar com `bash pesquisa/scripts/snapshot.sh`.
 - `pesquisa/fixtures/`: cabeçalho + 50 registros de cada CSV (`*_head.csv`), linhas de casos
   estranhos (`*_casos.csv`), `headers_*.txt` e `manifest.json`; tudo byte a byte, `-text` no
   `.gitattributes`. Receita do `CONTRIBUTING.md` do repo `anvisa`. Regerar com
   `python3 -I pesquisa/scripts/fixtures.py pesquisa/downloads/AAAA-MM-DD pesquisa/fixtures`.
 - `pesquisa/scripts/`: `perfil.py` (formato de cada CSV), `validar.py` (perguntas da validação),
-  `rn623.py` (reconstrução das listas RN 623), `cadop_diff.py` (diff de dois snapshots do CADOP).
+  `rn623.py` (reconstrução das listas RN 623), `cadop_diff.py` (diff de dois snapshots do CADOP),
+  `snapshot.sh` (snapshot incremental, só curl e coreutils).
