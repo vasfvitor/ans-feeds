@@ -3,3 +3,8 @@ pesquisa/downloads/
 # Notas locais
 CLAUDE.local.md
 PENDENCIAS.md
+
+# Python package
+.venv/
+site/
+__pycache__/

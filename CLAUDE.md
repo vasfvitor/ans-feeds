@@ -1,15 +1,18 @@
 # ans-feeds
 
 Research and validation of ANS open data for a scorecard of health plan operators.
-For now it is research only: no package, site or feed yet. The findings are in `pesquisa/VALIDACAO.md`
-(in Portuguese, like the data).
+The `ans_feeds` package rebuilds static Atom feeds of operator events (cancellations, new registrations,
+technical direction, special portability) from the committed snapshots. The research behind it is in
+`pesquisa/VALIDACAO.md` (in Portuguese, like the data).
 
 ## Rules
 
 - Commit by path (`git add` with explicit paths), without asking, one subject per commit; never push.
   Commit messages in English, without prefixes (as in `anvisa-feeds`).
-- No dependencies or packages without a plan: scripts use only the Python standard library (DuckDB and
-  httpx wait until there is a product).
+- Runtime uses only the Python standard library; the only dependencies are dev ones (pytest, ruff), managed
+  with `uv` (`uv sync`, `uv run pytest`, `uv run ruff check .`). Nothing else without a plan.
+- Code, comments, README and commit messages in English; visitor-facing text (pages, feed titles and
+  content) in pt-BR; ANS domain nouns stay in Portuguese.
 - Downloads go to `pesquisa/downloads/YYYY-MM-DD/` (outside git), with the HTTP headers in `headers/`.
   Scripts live in `pesquisa/scripts/`, never in the downloads folder, and read the files with
   `python3 -I`, taking the path as an argument.
@@ -24,6 +27,7 @@ For now it is research only: no package, site or feed yet. The findings are in `
 
 ## Layout
 
+- `src/ans_feeds/`: the package (`ans-feeds build --snapshots snapshots --site site`); tests in `tests/`.
 - `snapshots/YYYY-MM-DD/`: copies of what the ANS overwrites (daily CADOP, IGR and other
   reprocessed files, quarterly RN 623 PDFs), only what changed since the previous snapshot, with
   `SHA256SUMS` and `FONTES.tsv`. `snapshots/ESTADO.tsv` keeps the `Last-Modified` and sha256 of
