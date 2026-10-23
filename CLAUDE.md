@@ -28,6 +28,8 @@ technical direction, special portability) from the committed snapshots. The rese
 ## Layout
 
 - `src/ans_feeds/`: the package (`ans-feeds build --snapshots snapshots --site site`); tests in `tests/`.
+- `.github/workflows/feeds.yml`: daily snapshot (10:30 UTC), commit, build and Pages deploy;
+  `ci.yml`: ruff, pytest and a real build on every push. Pushing and enabling are the user's.
 - `snapshots/YYYY-MM-DD/`: copies of what the ANS overwrites (daily CADOP, IGR and other
   reprocessed files, quarterly RN 623 PDFs), only what changed since the previous snapshot, with
   `SHA256SUMS` and `FONTES.tsv`. `snapshots/ESTADO.tsv` keeps the `Last-Modified` and sha256 of

@@ -1,0 +1,115 @@
+name: feeds
+
+# Daily: snapshot what the ANS overwrites (scripts/snapshot.sh, curl only), commit it, rebuild the
+# static feeds and deploy them to GitHub Pages (Pages source: "GitHub Actions").
+#
+# The CADOP is published at 10:00 UTC, so the run is at 10:30 UTC. Three jobs on purpose: a
+# rendering or deploy failure never loses a snapshot. A source that is down does not stop the
+# others: what was fetched is committed, then the job fails so GitHub sends the failure e-mail,
+# and the site is rebuilt with a notice. "Run workflow" with build_only only rebuilds the site.
+
+on:
+  schedule:
+    - cron: "30 10 * * *"   # 07:30 America/Sao_Paulo
+  workflow_dispatch:
+    inputs:
+      build_only:
+        description: "Rebuild and deploy the site from committed snapshots, no snapshot"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feeds
+  cancel-in-progress: false   # never abort a snapshot half-way
+
+jobs:
+  snapshot:
+    if: ${{ !inputs.build_only }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write   # commit the snapshot
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+      - id: day
+        run: echo "day=$(TZ=America/Sao_Paulo date +%F)" >> "$GITHUB_OUTPUT"
+      - id: snapshot
+        name: Snapshot
+        run: bash scripts/snapshot.sh || echo "failed=true" >> "$GITHUB_OUTPUT"
+      - name: CADOP diff against the previous snapshot
+        run: |
+          day=${{ steps.day.outputs.day }}
+          if [ -f "snapshots/$day/Relatorio_cadop.csv" ]; then
+            prev=$(ls -d snapshots/20??-??-?? | sed 's:.*/::' | awk -v d="$day" '$0 < d' | tail -1)
+            if [ -n "$prev" ]; then
+              python3 -I pesquisa/scripts/cadop_diff.py "snapshots/$prev" "snapshots/$day" \
+                | tee "snapshots/$day/cadop_diff.txt"
+            fi
+          fi
+      - name: Keep the snapshot as an artifact (survives a failed push)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a   # v7.0.1
+        with:
+          name: snapshot-${{ steps.day.outputs.day }}
+          path: |
+            snapshots/${{ steps.day.outputs.day }}
+            snapshots/ESTADO.tsv
+          retention-days: 90
+          if-no-files-found: ignore
+      - name: Commit and push the snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add snapshots
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git commit -m "snapshot ${{ steps.day.outputs.day }}"
+          # something may have landed on main meanwhile: rebase and retry, then fail loudly
+          git push || (git pull --rebase origin main && git push) \
+                   || (sleep 30 && git pull --rebase origin main && git push)
+      - name: Fail if a source failed (after committing the rest)
+        if: ${{ steps.snapshot.outputs.failed == 'true' }}
+        run: exit 1
+
+  build:
+    needs: snapshot
+    # also after a failed snapshot: the site is rebuilt from what is committed, with a notice
+    if: ${{ always() && needs.snapshot.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+        with:
+          ref: main   # the commit the snapshot job just pushed, not this run's SHA
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d   # v10.0.1
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Build the site
+        run: |
+          extra=()
+          if [ "${{ needs.snapshot.result }}" = "failure" ]; then
+            extra=(--notice "A coleta de hoje falhou em parte; estes dados são da última coleta bem-sucedida de cada fonte.")
+          fi
+          uv run ans-feeds build --snapshots snapshots --site site "${extra[@]}"
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9   # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    # without this, a skipped snapshot (build_only) also skips the deploy
+    if: ${{ always() && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346   # v5.0.1
