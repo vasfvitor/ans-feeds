@@ -29,7 +29,9 @@ Hoje é só pesquisa: não há pacote, site nem feed. O resultado está em `pesq
 - `pesquisa/fixtures/`: cabeçalho + 50 registros de cada CSV (`*_head.csv`), linhas de casos
   estranhos (`*_casos.csv`), `headers_*.txt` e `manifest.json`; tudo byte a byte, `-text` no
   `.gitattributes`. Receita do `CONTRIBUTING.md` do repo `anvisa`. Regerar com
-  `python3 -I pesquisa/scripts/fixtures.py pesquisa/downloads/AAAA-MM-DD pesquisa/fixtures`.
+  `python3 -I pesquisa/scripts/fixtures.py pesquisa/downloads/2026-10-22 pesquisa/downloads/2026-10-23 pesquisa/fixtures`
+  (cada arquivo vem da última pasta que o tenha).
 - `pesquisa/scripts/`: `perfil.py` (formato de cada CSV), `validar.py` (perguntas da validação),
-  `rn623.py` (reconstrução das listas RN 623), `cadop_diff.py` (diff de dois snapshots do CADOP),
-  `snapshot.sh` (snapshot incremental, só curl e coreutils).
+  `rn623.py` (reconstrução das listas RN 623), `pda055.py` (reajuste de agrupamento),
+  `cadop_diff.py` (diff de dois snapshots do CADOP), `snapshot.sh` (snapshot incremental, só curl e
+  coreutils).

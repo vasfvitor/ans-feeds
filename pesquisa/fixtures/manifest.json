@@ -127,6 +127,22 @@
         "registro vazio": 3,
         "registro de 5 dígitos": 3
       }
+    },
+    {
+      "name": "reajuste_agrupamento",
+      "method": "GET",
+      "path": "/FTP/PDA/percentuais_de_reajuste_de_agrupamento-055/pda-055-Percentuais_de_Reajuste_de_Agrupamento.csv",
+      "status": 200,
+      "recorded": "2026-10-23",
+      "file": "headers_reajuste_agrupamento.txt",
+      "sample": "reajuste_agrupamento_head.csv",
+      "note": "608,033 bytes, UTF-8, 6,058 records, not kept",
+      "cases": "reajuste_agrupamento_casos.csv",
+      "cases_cover": {
+        "subagrupado (PCT_UNICO vazio, percentuais por segmentação)": 3,
+        "reajuste negativo": 3,
+        "354511 no ciclo 2025 (90,35% e QT_BENEF 13 vezes o do ciclo anterior)": 1
+      }
     }
   ]
 }

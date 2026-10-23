@@ -168,6 +168,31 @@ Há um arquivo por ano, regravado a cada mês.
 sem bytes 0x80–0x9F; LF; cabeçalho sem aspas; 42 colunas; 111.928 linhas, cerca de 368 bytes cada.
 Detalhes na pergunta 6.
 
+### Reajuste de agrupamento (PDA-055): `percentuais_de_reajuste_de_agrupamento-055/pda-055-Percentuais_de_Reajuste_de_Agrupamento.csv`
+
+Medido em 23/10/2026. `Last-Modified: Thu, 11 Jun 2026 13:47:52 GMT`; 608.033 bytes; UTF-8; LF;
+cabeçalho sem aspas; 10 colunas; 6.058 linhas. O dicionário (`.ods`, GEFAP/GGREP/DIPRO, junho de 2026)
+define o agrupamento pela RN 565/2022: contratos coletivos com menos de 30 vidas, num ciclo que vai de
+maio a abril.
+
+- **Já vem por operadora e ciclo.** Ciclos 2013 a 2025, com 407 a 543 operadoras cada. Não há nenhuma
+  repetição de (registro, ciclo), e o registro já tem 6 dígitos. Todas as 710 operadoras estão no CADOP;
+  das 407 do ciclo 2025, 399 estão ativas. O ciclo 2025 terminou em abril de 2026 e foi publicado em
+  junho, então o ciclo 2026 deve sair em junho de 2027.
+- **Dois formatos de linha.** `TP_AGRUPAMENTO` é `Único` (só `PCT_UNICO`) ou `Subagrupado` (100 linhas,
+  com `PCT_UNICO` vazio e de um a três percentuais por segmentação: ambulatorial, internação sem
+  obstetrícia e com obstetrícia). Nenhuma linha traz os dois.
+- **O reajuste em si.** No ciclo 2025, a mediana do `PCT_UNICO` é 9,91% e a média ponderada por
+  `QT_BENEF` é 14,01%, sobre 8,1 milhões de beneficiários. 129 linhas têm `0,00`, e há reajustes
+  negativos (−8,19%). Os extremos (333%, 267%) são grupos de 1 a 4 contratos.
+- **Anomalia a conferir:** `354511` (Unieste) teve 90,35% no ciclo 2025, com `QT_BENEF` de 19.227. No
+  ciclo anterior eram 1.486, então o número subiu 13 vezes. Os 671 contratos dão 28,6 vidas por
+  contrato, quase o teto de 29. Pode ser carga errada ou crescimento real; não tirei conclusão.
+- `RAZAO_SOCIAL` vem como `"registro - nome"`: para exibir, cortar o prefixo (presente em 100% das
+  linhas).
+
+Script: `scripts/pda055.py`.
+
 ### Fora do FTP
 
 - **Listas RN 623**, em `gov.br/ans/…/lista-excelencia-e-reducao-das-reclamacoes-das-operadoras`
@@ -210,7 +235,7 @@ Detalhes na pergunta 6.
 | 1 | IGR: 10 mil ou 100 mil; qual meta | ✔ | 100 mil, por aritmética e pela Ficha. A meta é 2,4 MH / 0,6 OD por trimestre, ou até 3 / 2 NIPs; a reconstrução acerta 426 de 430 operadoras. |
 | 2 | Direção fiscal e liquidação | ✖ | Não há fonte automatizável: o DOU e o `ans.gov.br` são `Disallow: /`. Há só sinais indiretos (abaixo). |
 | 3 | Beneficiários: basta o IGR? | ✔ | Sim para o scorecard. O SIB fica para UF e município (pergunta anotada). |
-| 4 | Reajuste coletivo (RPC × PDA-055) | ✖ | Fora desta etapa (RPC são 50 MB por mês). |
+| 4 | Reajuste coletivo (RPC × PDA-055) | ◐ | O PDA-055 serve como está (✔, medido em 23/10): já vem por operadora e ciclo, a chave é limpa e todas as operadoras estão no CADOP. Só cobre contratos com menos de 30 vidas. O RPC, para os contratos maiores, segue fora desta etapa (50 MB por mês). |
 | 5 | consumidor.gov.br | ✖ | Fora desta etapa (decisão de escopo). |
 | 6 | Penalidades: cabeçalho | ✔ | Lido: 42 colunas, chave, período e tamanho (abaixo). O conteúdo está parado em 03/2025. |
 | 7 | GitHub e Base dos Dados | ◐ | GitHub: 7 repositórios, nenhum faz scorecard. A Base dos Dados não foi buscada. |
@@ -415,10 +440,11 @@ canceladas: as 8 mais recentes vão de 09/09 a 09/10/2026, 4 por pedido de cance
   - do gov.br: as 14 listas RN 623 ainda no ar (3T2025 a 2T2026) e a página de portabilidade especial.
 
   O `ESTADO.tsv` e o `scripts/snapshot.sh` continuam a série.
-- `pesquisa/fixtures/`: para cada um dos 11 CSVs, `*_head.csv` (cabeçalho + 50 registros, conferido com
-  `cmp` contra o começo do arquivo) e `headers_*.txt` (resposta HTTP + nota). Mais `*_casos.csv` em 6
-  conjuntos, com as linhas que os 50 primeiros não cobrem (registro sem zero, DT vazia, duplicata de
-  2019-04, IGR com 1 casa, registro vazio, todo ND), conferidas linha a linha contra o original;
+- `pesquisa/fixtures/`: para cada um dos 12 CSVs (o PDA-055 foi baixado em 23/10; o `manifest.json`
+  traz a data), `*_head.csv` (cabeçalho + 50 registros, conferido com `cmp` contra o começo do arquivo)
+  e `headers_*.txt` (resposta HTTP + nota). Mais `*_casos.csv` em 7 conjuntos, com as linhas que os 50
+  primeiros não cobrem (registro sem zero, DT vazia, duplicata de 2019-04, IGR com 1 casa, registro
+  vazio, todo ND, subagrupado, reajuste negativo), conferidas linha a linha contra o original;
   `manifest.json`; `.gitattributes` com `-text`.
 
 ## Recomendação

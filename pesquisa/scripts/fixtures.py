@@ -1,12 +1,14 @@
 """Corta as fixtures de pesquisa/fixtures/: cabeçalho + 50 registros por CSV, byte a byte, e headers_<nome>.txt.
 
 Receita do CONTRIBUTING.md do anvisa. Só biblioteca padrão.
-Rodar com `python3 -I pesquisa/scripts/fixtures.py DIR_DOWNLOADS pesquisa/fixtures`.
+Rodar com `python3 -I pesquisa/scripts/fixtures.py DIR_DOWNLOADS [DIR_DOWNLOADS…] pesquisa/fixtures`; cada arquivo
+vem da última pasta (`…/AAAA-MM-DD`) que o tenha, e essa data vai para o manifest.
 """
 
 import csv
 import io
 import json
+import os
 import re
 import sys
 
@@ -22,6 +24,9 @@ CASOS = {
     "penalidades": {"registro vazio": rb'^[^;]*;[^;]*;[^;]*;[^;]*;;',
                     "registro de 5 dígitos": rb'^[^;]*;[^;]*;[^;]*;[^;]*;"?\d{5}"?;'},
     "idss_2016_2025": {"todas as células ND (Sul América 000043, incorporada em 2013)": rb'^"000043";'},
+    "reajuste_agrupamento": {"subagrupado (PCT_UNICO vazio, percentuais por segmentação)": rb'^"\d{6}";\d{4};"Subagrupado";',
+                             "reajuste negativo": rb'^"\d{6}";\d{4};[^;]*;-',
+                             "354511 no ciclo 2025 (90,35% e QT_BENEF 13 vezes o do ciclo anterior)": rb'^"354511";2025;'},
 }
 ARQUIVOS = {
     "cadop_ativas": ("Relatorio_cadop.csv", "operadoras_de_plano_de_saude_ativas/"),
@@ -35,13 +40,17 @@ ARQUIVOS = {
     "ressarcimento_indice": ("202609_Indice_de_Efetivo_Pagamento.csv", "ressarcimento_ao_SUS_indice_efetivo_pagamento/"),
     "hc": ("HC_2026.csv", "hc_ressarcimento_sus/"),
     "penalidades": ("penalidades_aplicadas_a_operadoras.csv", "penalidades_aplicadas_a_operadoras/"),
+    "reajuste_agrupamento": ("pda-055-Percentuais_de_Reajuste_de_Agrupamento.csv", "percentuais_de_reajuste_de_agrupamento-055/"),
 }
 
 
 def main():
-    origem, destino = sys.argv[1].rstrip("/"), sys.argv[2].rstrip("/")
+    origens, destino = [p.rstrip("/") for p in sys.argv[1:-1]], sys.argv[-1].rstrip("/")
+    primeiro = os.path.basename(origens[0])
     entradas = []
     for nome, (arq, pasta) in ARQUIVOS.items():
+        origem = [o for o in origens if os.path.exists(f"{o}/{arq}")][-1]
+        dia = os.path.basename(origem)
         dados = open(f"{origem}/{arq}", "rb").read()
         try:
             texto, enc = dados.decode("utf-8"), "UTF-8"
@@ -77,12 +86,13 @@ def main():
                 f"{nome}_head.csv is the header plus the first {REGISTROS} of those records, cut byte for byte.")
         open(f"{destino}/headers_{nome}.txt", "w", encoding="utf-8", newline="\n").write(f"{brutos}\n\n{nota}\n")
         entradas.append({"name": nome, "method": "GET", "path": f"/FTP/PDA/{pasta}{arq}", "status": 200,
+                         **({"recorded": dia} if dia != primeiro else {}),
                          "file": f"headers_{nome}.txt", "sample": f"{nome}_head.csv",
                          "note": f"{len(dados):,} bytes, {enc}, {len(registros) - 1:,} records, not kept",
                          **({"cases": f"{nome}_casos.csv", "cases_cover": casos} if casos else {})})
         print(f"{nome}: {fim:,} de {len(dados):,} bytes")
     manifest = {
-        "recorded": "2026-10-22",
+        "recorded": primeiro,
         "notes": ("Arquivos reais do FTP de dados abertos da ANS, https://dadosabertos.ans.gov.br/FTP/PDA/ (sem auth, "
                   "sem robots.txt). headers_*.txt guarda a resposta HTTP (curl -D) e uma nota; *_head.csv o cabeçalho "
                   "mais os primeiros 50 registros, copiados byte a byte (nunca reencodar; .gitattributes marca -text). "
