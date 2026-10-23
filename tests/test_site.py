@@ -1,4 +1,4 @@
-import filecmp
+import json
 import re
 from collections import Counter
 from xml.etree import ElementTree as ET
@@ -55,9 +55,19 @@ def test_internal_links_point_to_files(site):
 def test_build_is_idempotent(site, tmp_path):
     again = tmp_path / "again"
     build_site(SNAPSHOTS, again, base_url=BASE_URL, base_tag=BASE_TAG, notice="Coleta falhou.")
-    cmp = filecmp.dircmp(site, again)
-    assert not cmp.left_only and not cmp.right_only
-    assert filecmp.cmpfiles(site, again, cmp.common_files, shallow=False)[1] == []
+    um = sorted(p.relative_to(site) for p in site.rglob("*") if p.is_file())
+    dois = sorted(p.relative_to(again) for p in again.rglob("*") if p.is_file())
+    assert um == dois
+    assert all((site / p).read_bytes() == (again / p).read_bytes() for p in um)
+
+
+def test_operator_data_is_published(site):
+    idx = json.loads((site / "dados" / "operadoras.json").read_text(encoding="utf-8"))
+    assert len(idx) > 1106
+    for o in idx[:20]:
+        rec = json.loads((site / "dados" / "operadora" / f"{o['registro']}.json").read_text())
+        assert rec["registro"] == o["registro"] and rec["nome"] == o["nome"]
+    assert (site / "dados" / "schema.md").is_file()
 
 
 def test_known_events(site):

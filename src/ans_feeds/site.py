@@ -16,7 +16,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from . import eventos as ev
-from . import portabilidade, snapshots
+from . import operadoras, portabilidade, snapshots
 from .atom import Entry, atom_feed, tag_uri
 from .eventos import Evento
 
@@ -229,6 +229,10 @@ def feed_bytes(
     )
 
 
+def compact(obj: object) -> str:
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n"
+
+
 def xml_bytes(root: ET.Element) -> bytes:
     return b'<?xml version="1.0" encoding="utf-8"?>\n' + ET.tostring(root, encoding="utf-8")
 
@@ -257,6 +261,7 @@ def build_site(
     site.mkdir(parents=True)
 
     def write(name: str, data: str | bytes) -> None:
+        (site / name).parent.mkdir(parents=True, exist_ok=True)
         (site / name).write_bytes(data.encode("utf-8") if isinstance(data, str) else data)
 
     stale = ""
@@ -380,12 +385,23 @@ def build_site(
     write("sitemap.xml", xml_bytes(urlset))
     write("robots.txt", f"User-agent: *\nAllow: /\nSitemap: {base_url}/sitemap.xml\n")
 
+    # Data for the public portal: a search index and one record per operator (contract in
+    # dados/schema.md).
+    registros = operadoras.operadoras(
+        snapshots_dir, [e for items in por_tipo.values() for e in items]
+    )
+    write("dados/operadoras.json", compact(operadoras.indice(registros)))
+    for o in registros:
+        write(f"dados/operadora/{o['registro']}.json", compact(o))
+    write("dados/schema.md", operadoras.SCHEMA.read_text(encoding="utf-8"))
+
     meta = {
         "date": stamp_day,
         "eventos": len(geral),
         "tipos": {t: len(items) for t, items in por_tipo.items()},
         "mais_recente": geral[0].data.isoformat() if geral else None,
         "portabilidade_atualizada_em": atualizado.date().isoformat() if atualizado else None,
+        "operadoras": len(registros),
     }
     write("meta.json", json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
     return meta

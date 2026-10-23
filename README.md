@@ -25,6 +25,9 @@ highlighted instead.
 - `ans-feeds build` rebuilds the whole site from the snapshots. Every event carries the date of the
   act, so the history comes from the current files; the snapshots add when the ANS first published
   it. Two builds of the same snapshots are byte for byte equal.
+- The build also publishes `/dados/`: a search index and one JSON per operator (registry, complaints
+  compared with operators of the same size, IDSS, SUS reimbursement, events), described in
+  `/dados/schema.md`. It feeds a public portal; facts only, no score of our own.
 - The research behind the choices (formats, keys, what is stale at the source) is in
   `pesquisa/VALIDACAO.md`, in Portuguese.
 
