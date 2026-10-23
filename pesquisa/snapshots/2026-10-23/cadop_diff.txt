@@ -1,0 +1,6 @@
+### Relatorio_cadop.csv (pesquisa/snapshots/2026-10-22 → pesquisa/snapshots/2026-10-23): 1106 → 1106; entraram 0, saíram 0, alterados 3
+  campos alterados: {'REPRESENTANTE': 1, 'REGIAO_DE_COMERCIALIZACAO': 2}
+  ~ 303623 {'REPRESENTANTE': ('FERNANDO JOSÉ MOREDO', 'ABEL MORAIS LOPES')}
+  ~ 423670 {'REGIAO_DE_COMERCIALIZACAO': ('', '3')}
+  ~ 425010 {'REGIAO_DE_COMERCIALIZACAO': ('', '5')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em pesquisa/snapshots/2026-10-23

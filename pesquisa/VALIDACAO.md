@@ -356,11 +356,24 @@ Sobra só `X00002`. Depois de `strip()`, o `303623 ` casa.
 
 ### CADOP diff
 
-**Pendente para 23/10/2026.** O script `scripts/cadop_diff.py` está pronto, testado com duas cópias do
-dia 22 (0 entradas, 0 saídas, 0 alterações). Enquanto o diff não
-sai, a própria lista de canceladas dá a série de saídas, com data e motivo. As 8 mais recentes vão de
-09/09 a 09/10/2026: 4 por pedido de cancelamento, 3 por "Alternat. à Liquidação" e 1 por liquidação
-extrajudicial.
+**22/10 → 23/10/2026** (`snapshots/2026-10-23/cadop_diff.txt`). O CADOP de 23/10 saiu com
+`Last-Modified` 10:00:08 GMT (07:00 de Brasília).
+
+- **Ativas:** 1.106 → 1.106, sem entradas nem saídas, com **3 registros alterados**:
+  - `303623` (Centro Trasmontano de São Paulo): `REPRESENTANTE` trocado;
+  - `423670` (HES Plano de Saúde, registro de 2023) e `425010` (Vida Saúde, registrada em 24/07/2026):
+    `REGIAO_DE_COMERCIALIZACAO` deixou de ser vazio e passou a `3` e `5`.
+- **Canceladas:** o `Last-Modified` também mudou para 23/10 10:00:08, mas o conteúdo é **byte a byte
+  igual** (mesmo sha256). A data do arquivo muda todo dia, haja mudança ou não. Por isso o `snapshot.sh`
+  confere o sha antes de guardar.
+
+Um dia calmo, sem cancelamento. A série de saídas, com data e motivo, já está na própria lista de
+canceladas: as 8 mais recentes vão de 09/09 a 09/10/2026, 4 por pedido de cancelamento, 3 por
+"Alternat. à Liquidação" e 1 por liquidação extrajudicial.
+
+**Custo no git, medido:** compactei o repo, fiz o commit do snapshot e compactei de novo. O pack foi de
+8.336 KiB para **8.337 KiB**. O CADOP de 23/10 (346.858 bytes) ficou como delta de 87 bytes sobre o de 22/10
+(`git verify-pack`). Pela regra fixada antes da medida (menos de ~50 KB por dia), o CADOP cheio fica no git.
 
 ### IDSS
 
@@ -422,10 +435,10 @@ operadora (b).** Só o snapshot é irreversível: o resto se reconstrói a qualq
    | 4 PDFs RN 623 | trimestral | 1,87 MB | | 7,5 MB |
    | portabilidade + direção técnica | semanal | ~235 KB | | |
 
-   O CADOP bruto diário no git daria ~505 MB por ano: grande demais para o repo, cujo limite recomendado
-   pelo GitHub é 1 GB. Proposta: guardar no git o diff diário (KB) mais um snapshot cheio por mês em
-   gzip (~430 KB, ~5 MB por ano), e o diário bruto num artefato fora do git. Se vira GitHub Action,
-   decidir depois do diff de 23/10, que mostra quanto muda num dia.
+   Na conta bruta, o CADOP diário daria ~505 MB por ano no git. Medido em 23/10, o pack cresce ~1 KiB
+   por dia, porque o git guarda cada versão como delta da anterior. Assim, o CADOP cheio fica no git, e o
+   `snapshot.sh` só guarda o que mudou (ver "CADOP diff"). O custo que sobra está no
+   checkout, não no pack. Ligar a GitHub Action é decisão do usuário.
 2. **(a) Feed de eventos, no padrão `anvisa-feeds`.**
    - Cancelamentos com motivo: 34 a 73 por ano desde 2019, 15 por liquidação desde 2024.
    - Novos registros.

@@ -1,10 +1,13 @@
 """Diff de dois snapshots do CADOP (ativas e canceladas): entradas, saídas e campos alterados por registro.
 
 Só biblioteca padrão. Rodar com `python3 -I pesquisa/scripts/cadop_diff.py SNAPSHOT_ANTIGO SNAPSHOT_NOVO`.
+O snapshot é incremental: arquivo ausente em SNAPSHOT_NOVO não mudou; ausente em SNAPSHOT_ANTIGO, vale a
+versão do snapshot mais recente anterior a SNAPSHOT_NOVO que o tenha.
 """
 
 import collections
 import csv
+import os
 import sys
 
 
@@ -13,10 +16,25 @@ def ler(pasta, arq):
         return {r["REGISTRO_OPERADORA"]: r for r in csv.DictReader(f, delimiter=";")}
 
 
+def anterior(antigo, novo, arq):
+    if os.path.exists(f"{antigo}/{arq}"):
+        return antigo
+    raiz, dia = os.path.split(novo)
+    dias = sorted(d for d in os.listdir(raiz or ".") if d < dia and os.path.exists(f"{raiz}/{d}/{arq}"))
+    return f"{raiz}/{dias[-1]}" if dias else None
+
+
 def main():
     antigo, novo = (p.rstrip("/") for p in sys.argv[1:3])
     for arq in ("Relatorio_cadop.csv", "Relatorio_cadop_canceladas.csv"):
-        a, n = ler(antigo, arq), ler(novo, arq)
+        if not os.path.exists(f"{novo}/{arq}"):
+            print(f"### {arq}: sem versão nova em {novo}")
+            continue
+        base = anterior(antigo, novo, arq)
+        if base is None:
+            print(f"### {arq}: sem versão anterior a {novo}")
+            continue
+        a, n = ler(base, arq), ler(novo, arq)
         entraram = sorted(n.keys() - a.keys())
         sairam = sorted(a.keys() - n.keys())
         mudou = collections.Counter()
@@ -28,7 +46,7 @@ def main():
             alterados += bool(campos)
             if campos and len(exemplos) < 10:
                 exemplos.append((reg, {c: (a[reg].get(c), n[reg][c]) for c in campos}))
-        print(f"### {arq}: {len(a)} → {len(n)}; entraram {len(entraram)}, saíram {len(sairam)}, alterados {alterados}")
+        print(f"### {arq} ({base} → {novo}): {len(a)} → {len(n)}; entraram {len(entraram)}, saíram {len(sairam)}, alterados {alterados}")
         for reg in entraram:
             r = n[reg]
             print(f"  + {reg} {r['RAZAO_SOCIAL'][:50]} {r.get('DATA_DESCREDENCIAMENTO', r['DATA_REGISTRO_ANS'])} {r.get('MOTIVO_DO_DESCREDENCIAMENTO', '')}")
