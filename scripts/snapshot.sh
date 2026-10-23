@@ -48,6 +48,16 @@ else
   falhas=$((falhas + 1))
 fi
 
+# Índice de ressarcimento ao SUS: um arquivo por mês (AAAAMM_...), só o mais recente.
+ress=$ftp/ressarcimento_ao_SUS_indice_efetivo_pagamento
+if curl -sS --fail --max-time 120 -A "$ua" -o "$tmp/ress.html" "$ress/"; then
+  arq=$(sed -n 's/.*href="\([0-9]\{6\}_Indice_de_Efetivo_Pagamento\.csv\)".*/\1/p' "$tmp/ress.html" | sort | tail -1)
+  [ -n "$arq" ] && fontes+=$'\n'"$arq"$'\t'"$ress/$arq"$'\t'sim
+else
+  echo "FALHA: diretório do índice de ressarcimento" >&2
+  falhas=$((falhas + 1))
+fi
+
 touch "$estado"
 novo_estado=$tmp/estado.tsv
 : > "$novo_estado"
@@ -104,7 +114,7 @@ awk -F'\t' 'NR == FNR {visto[$1]; next} !($1 in visto)' "$novo_estado" "$estado"
 sort -t$'\t' -k1,1 "$novo_estado" > "$estado"
 
 if [ ${#guardados[@]} -gt 0 ]; then
-  (cd "$dest" && sha256sum -- $(ls | sed '/^SHA256SUMS$/d;/^FONTES.tsv$/d') > SHA256SUMS)
+  (cd "$dest" && sha256sum -- $(ls | sed '/^SHA256SUMS$/d;/^FONTES.tsv$/d;/^cadop_diff.txt$/d') > SHA256SUMS)
 fi
 echo "guardados em $dest: ${#guardados[@]}; falhas: $falhas"
 [ "$falhas" -eq 0 ]
