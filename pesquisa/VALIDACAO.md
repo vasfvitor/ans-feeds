@@ -238,7 +238,7 @@ Script: `scripts/pda055.py`.
 | 4 | Reajuste coletivo (RPC × PDA-055) | ◐ | O PDA-055 serve como está (✔, medido em 23/10): já vem por operadora e ciclo, a chave é limpa e todas as operadoras estão no CADOP. Só cobre contratos com menos de 30 vidas. O RPC, para os contratos maiores, segue fora desta etapa (50 MB por mês). |
 | 5 | consumidor.gov.br | ✖ | Fora desta etapa (decisão de escopo). |
 | 6 | Penalidades: cabeçalho | ✔ | Lido: 42 colunas, chave, período e tamanho (abaixo). O conteúdo está parado em 03/2025. |
-| 7 | GitHub e Base dos Dados | ◐ | GitHub: 7 repositórios, nenhum faz scorecard. A Base dos Dados não foi buscada. |
+| 7 | GitHub e Base dos Dados | ✔ | GitHub: 7 repositórios, nenhum faz scorecard (a busca de código exige token). A Base dos Dados tem um único conjunto da ANS, o de beneficiários (PDA-024), sem nenhum indicador por operadora (medido em 23/10). |
 | 8 | Power BI RN 623 e XLSX do IDSS ab 2024 | ◐ | O XLSX é igual ao CSV (✔). O Power BI não foi aberto: não se depende dele. |
 
 ### 1. IGR: escala e meta
@@ -353,12 +353,28 @@ seriam necessários para quebrar por UF ou município: **pergunta anotada, não 
 - **Volume:** decisões de 1ª instância por ano foram 7.483 (2021), 5.924, 7.257 e 7.708 (2024), cerca de
   640 linhas e 235 KB por mês. O arquivo, porém, sai inteiro: 41,2 MB, ou 7,5 MB em gzip.
 
-### 7. GitHub
+### 7. GitHub e Base dos Dados
 
 Quatro buscas na API pública de repositórios (sem autenticação; o `gh` não tem credencial no sandbox)
 devolveram 7 repositórios: análises de TISS e NIP, cargas SQL, uma EDA. Nenhum cruza indicadores por
-operadora nem publica scorecard. Com o healthbR (R), o terreno continua livre. A Base dos
-Dados não foi buscada, e a busca de código exige token.
+operadora nem publica scorecard. Com o healthbR (R), o terreno continua livre. A busca de
+código exige token.
+
+**Base dos Dados** (23/10/2026; `robots.txt` do site é `Allow: /`, o do backend só barra `/admin` e
+`/auth`). Usei a API de busca do backend (`backend.basedosdados.org/search/`, GET, JSON), a mesma do
+site.
+- **Um único conjunto da ANS.** O filtro `organization=ans` devolve só `beneficiario` ("Beneficiários de
+  Plano de Saúde"): 1 tabela, município × mês × operadora, cobertura 2014-05 a 2026-08, metadados
+  atualizados em 2024-02-19. É o consolidado de beneficiários (PDA-024), os ZIPs grandes que esta etapa
+  não baixa.
+- **Acesso.** Os sinalizadores da API dizem: há dado aberto e fechado, o download direto só no plano
+  pago (`contains_direct_download_free: false`) e a cobertura temporal aberta não aparece
+  (`contains_temporalcoverage_free: false`). Não conferi quanto da série sai de graça pelo BigQuery.
+- **O que não há:** buscas por "ans", "saúde suplementar", "planos de saúde" e "operadoras de planos" não
+  trazem IGR, IDSS, CADOP, regimes, ressarcimento nem reajuste. Nenhum indicador por operadora, então
+  nenhuma concorrência para o scorecard.
+- Para o produto, serve como atalho possível para o SIB por município, se a cobertura aberta bastar. Não
+  é dependência.
 
 ### Junção pelo registro
 
