@@ -14,7 +14,7 @@ dest=$raiz/$dia
 estado=$raiz/ESTADO.tsv
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-ua="ans-pesquisa/0 (+https://github.com/vasfvitor/ans)"
+ua="ans-feeds/0 (+https://github.com/vasfvitor/ans-feeds)"
 ftp=https://dadosabertos.ans.gov.br/FTP/PDA
 govbr=https://www.gov.br/ans/pt-br
 falhas=0
