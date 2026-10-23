@@ -24,10 +24,10 @@ For now it is research only: no package, site or feed yet. The findings are in `
 
 ## Layout
 
-- `pesquisa/snapshots/YYYY-MM-DD/`: copies of what the ANS overwrites (daily CADOP, IGR and other
+- `snapshots/YYYY-MM-DD/`: copies of what the ANS overwrites (daily CADOP, IGR and other
   reprocessed files, quarterly RN 623 PDFs), only what changed since the previous snapshot, with
-  `SHA256SUMS` and `FONTES.tsv`. `pesquisa/snapshots/ESTADO.tsv` keeps the `Last-Modified` and sha256 of
-  the latest version of each file; generate with `bash pesquisa/scripts/snapshot.sh`.
+  `SHA256SUMS` and `FONTES.tsv`. `snapshots/ESTADO.tsv` keeps the `Last-Modified` and sha256 of
+  the latest version of each file; generate with `bash scripts/snapshot.sh` (curl and coreutils only).
 - `pesquisa/fixtures/`: header + 50 records of each CSV (`*_head.csv`), rows with odd cases
   (`*_casos.csv`), `headers_*.txt` and `manifest.json`; all byte for byte, `-text` in `.gitattributes`.
   Recipe from the `anvisa` repo's `CONTRIBUTING.md`. Regenerate with
@@ -35,4 +35,4 @@ For now it is research only: no package, site or feed yet. The findings are in `
   (each file comes from the last folder that has it).
 - `pesquisa/scripts/`: `perfil.py` (format of each CSV), `validar.py` (validation questions),
   `rn623.py` (RN 623 list reconstruction), `pda055.py` (pooled adjustment), `cadop_diff.py` (diff of two
-  CADOP snapshots), `snapshot.sh` (incremental snapshot, curl and coreutils only).
+  CADOP snapshots).

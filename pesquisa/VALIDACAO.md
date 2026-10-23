@@ -450,7 +450,7 @@ canceladas: as 8 mais recentes vão de 09/09 a 09/10/2026, 4 por pedido de cance
 
 ## Snapshots e fixtures
 
-- `pesquisa/snapshots/2026-10-22/` (34 MB, 23 arquivos, `SHA256SUMS`):
+- `snapshots/2026-10-22/` (34 MB, 23 arquivos, `SHA256SUMS`):
   - do FTP: CADOP ativas e canceladas, IGR, TR, direção técnica, prudencial, garantia, HC 2026 e IDSS
     2016_2025;
   - do gov.br: as 14 listas RN 623 ainda no ar (3T2025 a 2T2026) e a página de portabilidade especial.

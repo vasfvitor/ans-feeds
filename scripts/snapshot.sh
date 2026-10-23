@@ -4,11 +4,11 @@
 # RAIZ/ESTADO.tsv (Last-Modified e sha256 da última versão vista de cada arquivo), porque o git não
 # preserva mtime. Só curl, sha256sum, awk e sed. Não faz commit.
 #
-# Uso: pesquisa/scripts/snapshot.sh [RAIZ] [DIA]
-#   RAIZ padrão pesquisa/snapshots; DIA padrão a data de hoje em Brasília.
+# Uso: scripts/snapshot.sh [RAIZ] [DIA]
+#   RAIZ padrão snapshots; DIA padrão a data de hoje em Brasília.
 set -euo pipefail
 
-raiz=${1:-pesquisa/snapshots}
+raiz=${1:-snapshots}
 dia=${2:-$(TZ=America/Sao_Paulo date +%F)}
 dest=$raiz/$dia
 estado=$raiz/ESTADO.tsv
