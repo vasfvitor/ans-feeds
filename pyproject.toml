@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "ans-feeds"
 version = "0.1.0"
 description = "Events of Brazilian health plan operators (ANS open data) published as static Atom feeds"
+readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 dependencies = []
