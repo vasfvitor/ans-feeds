@@ -27,7 +27,8 @@ highlighted instead.
   it. Two builds of the same snapshots are byte for byte equal.
 - The build also publishes `/dados/`: a search index and one JSON per operator (registry, complaints
   compared with operators of the same size, IDSS, SUS reimbursement, events), described in
-  `/dados/schema.md`. It feeds a public portal; facts only, no score of our own.
+  `/dados/schema.md`. It feeds the public portal <https://saude.abelhaninja.de>; facts only, no
+  score of our own.
 - The research behind the choices (formats, keys, what is stale at the source) is in
   `pesquisa/VALIDACAO.md`, in Portuguese.
 
