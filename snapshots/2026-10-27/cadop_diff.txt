@@ -1,0 +1,6 @@
+### Relatorio_cadop.csv (snapshots/2026-10-24 → snapshots/2026-10-27): 1106 → 1106; entraram 0, saíram 0, alterados 3
+  campos alterados: {'FAX': 1, 'LOGRADOURO': 1, 'NUMERO': 1, 'COMPLEMENTO': 1, 'BAIRRO': 1, 'CEP': 1, 'REGIAO_DE_COMERCIALIZACAO': 1}
+  ~ 411248 {'FAX': ('32713322', '')}
+  ~ 423343 {'LOGRADOURO': ('RUA PINTOR LULA CARDOSO AYRES', 'AVENIDA REPÚBLICA DO LIBANO'), 'NUMERO': ('3196', '251'), 'COMPLEMENTO': ('', 'SALA 1107 TORRE A'), 'BAIRRO': ('IBURA', 'PINA'), 'CEP': ('51200250', '51110160')}
+  ~ 425001 {'REGIAO_DE_COMERCIALIZACAO': ('', '6')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-10-27
