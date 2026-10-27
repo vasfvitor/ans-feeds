@@ -393,6 +393,8 @@ def build_site(
     write("dados/operadoras.json", compact(operadoras.indice(registros)))
     for o in registros:
         write(f"dados/operadora/{o['registro']}.json", compact(o))
+    # every operator in one file: the portal build reads this instead of ~1,340 requests
+    write("dados/todas.json", compact({"date": stamp_day, "operadoras": registros}))
     write("dados/schema.md", operadoras.SCHEMA.read_text(encoding="utf-8"))
 
     meta = {

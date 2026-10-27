@@ -30,7 +30,9 @@ technical direction, special portability) from the committed snapshots. The rese
 - `src/ans_feeds/`: the package (`ans-feeds build --snapshots snapshots --site site`); tests in `tests/`.
   Besides the feeds, the build publishes `dados/` (search index and one JSON per operator) for the public
   portal; the contract is `src/ans_feeds/dados_schema.md`. Facts with base and source only: no score of
-  our own, no contact data, no prudential class as a health grade.
+  our own, no contact data, no prudential class as a health grade. `dados/todas.json` holds every
+  operator in one file, and it is what the portal build reads: one file per operator meant ~1,340
+  requests, and GitHub Pages answers 429 to that kind of burst.
 - `.github/workflows/feeds.yml`: daily snapshot (10:30 UTC), commit, build and Pages deploy;
   `ci.yml`: ruff, pytest and a real build on every push. Pushing and enabling are the user's.
 - `snapshots/YYYY-MM-DD/`: copies of what the ANS overwrites (daily CADOP, IGR and other

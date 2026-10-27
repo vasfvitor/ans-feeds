@@ -37,6 +37,12 @@ Os campos do índice, mais:
 | `fontes` | URL de cada conjunto de dados usado |
 | `fora` | indicadores que existem mas a ANS parou de atualizar |
 
+## `todas.json`
+
+`{date, operadoras: [...]}`, em que `date` é o dia dos dados (o mesmo do `meta.json`) e cada item é
+exatamente o conteúdo do `operadora/<registro>.json` correspondente, na ordem do índice. É para quem
+precisa de tudo de uma vez; para uma operadora só, use o arquivo individual.
+
 ## O que fica de fora, e por quê
 
 - **Classificação prudencial (S1–S4):** é um segmento por porte e perfil de risco, usado pela ANS para

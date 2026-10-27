@@ -70,6 +70,18 @@ def test_operator_data_is_published(site):
     assert (site / "dados" / "schema.md").is_file()
 
 
+def test_todas_holds_the_same_operators_as_the_files(site):
+    dados = site / "dados"
+    idx = json.loads((dados / "operadoras.json").read_text(encoding="utf-8"))
+    todas = json.loads((dados / "todas.json").read_text(encoding="utf-8"))
+    meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+    assert todas["date"] == meta["date"]
+    assert [o["registro"] for o in todas["operadoras"]] == [o["registro"] for o in idx]
+    for o in todas["operadoras"]:
+        arquivo = dados / "operadora" / f"{o['registro']}.json"
+        assert o == json.loads(arquivo.read_text(encoding="utf-8"))
+
+
 def test_known_events(site):
     def text(name):
         return (site / name).read_text(encoding="utf-8")
