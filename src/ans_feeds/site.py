@@ -336,9 +336,9 @@ def build_site(
         " feeds para receber cada novo evento.</p>"
         '<ul class="feeds"><li><a href="geral.xml">geral.xml</a>: todos os eventos</li>'
         f"{feeds}</ul>"
-        '<div class="box">Direção fiscal e liquidação extrajudicial não têm fonte aberta que possa'
-        " ser coletada automaticamente (o Diário Oficial e o site antigo da ANS não permitem"
-        " robôs)."
+        '<div class="box">Direção fiscal e liquidação extrajudicial ainda não estão aqui: saem em'
+        " Resoluções Operacionais no Diário Oficial, que tem coleta aberta pelo INLABS da Imprensa"
+        " Nacional, com cadastro, ainda não usada por este site."
         " O cancelamento por liquidação extrajudicial aparece em destaque.</div>"
         f"<h2>Eventos mais recentes</h2>{events_list(geral[:INDEX_LIMIT])}"
     )

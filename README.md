@@ -12,9 +12,10 @@ Suplementar), published as static Atom feeds at <https://ans.feeds.abelhaninja.d
 | `portabilidade.xml` | special and extraordinary portability (beneficiaries may switch plans without new waiting periods) |
 | `operadora/<registro>.xml` | one per operator: its events, plus each new complaint quarter and ANS score (IDSS) year; linked from the operator's page on the portal |
 
-Fiscal direction and extrajudicial liquidation have no source that can be collected automatically
-(the Diário Oficial and the old ANS site disallow robots); cancellations by liquidation are
-highlighted instead.
+Fiscal direction and extrajudicial liquidation are not covered yet: they come out as Resoluções
+Operacionais in the Diário Oficial, whose open route is the Imprensa Nacional's INLABS (daily XML,
+with a free registration), not used here so far. Cancellations by liquidation are highlighted
+instead.
 
 ## How it works
 
