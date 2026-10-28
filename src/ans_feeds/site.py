@@ -20,6 +20,7 @@ from . import eventos as ev
 from . import feed_operadora, operadoras, portabilidade, snapshots
 from .atom import Entry, atom_feed, tag_uri
 from .eventos import Evento
+from .tabelas import tabelas
 
 SITE_NAME = "Eventos das operadoras de planos de saúde"
 REPO_URL = "https://github.com/vasfvitor/ans-feeds"
@@ -434,6 +435,9 @@ def build_site(
     # every operator in one file: the portal build reads this instead of ~1,340 requests
     write("dados/todas.json", compact({"date": stamp_day, "operadoras": registros}))
     write("dados/schema.md", operadoras.SCHEMA.read_text(encoding="utf-8"))
+    # the same records as tables for people who redistribute (Procon, press): no ranking
+    for nome, texto in tabelas(registros, date.fromisoformat(stamp_day)).items():
+        write(f"dados/tabelas/{nome}", texto)
 
     meta = {
         "date": stamp_day,

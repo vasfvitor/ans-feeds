@@ -44,6 +44,18 @@ Os campos do índice, mais:
 exatamente o conteúdo do `operadora/<registro>.json` correspondente, na ordem do índice. É para quem
 precisa de tudo de uma vez; para uma operadora só, use o arquivo individual.
 
+## `tabelas/`
+
+Os mesmos dados em CSV, para quem redistribui (Procon, associações, imprensa): `;` entre os campos,
+vírgula decimal e UTF-8 com BOM, como a ANS publica, para abrir direto numa planilha em português. Nenhuma
+tabela é um ranking: a ordem é por data ou por registro.
+
+| arquivo | uma linha por | colunas |
+|---|---|---|
+| `portabilidade-vigente.csv` | Resolução Operacional de portabilidade especial em vigor, da mais recente à mais antiga | `registro`, `operadora`, `uf`, `situacao`, `resolucao_operacional`, `data`, `link` |
+| `fechamentos-12-meses.csv` | operadora com o registro cancelado nos 365 dias até `date`, da mais recente à mais antiga | `registro`, `operadora`, `uf`, `modalidade`, `data`, `motivo` (como a ANS escreve) |
+| `ressarcimento-sus.csv` | operadora com ressarcimento ao SUS, por registro | `registro`, `operadora`, `competencia`, `valor_cobrado`, `valor_pago`, `valor_parcelado` (em reais, acumulados), `indice_pagamento`, `indice_pagamento_5anos` (em %, (pago + parcelado) ÷ cobrado) |
+
 ## O que fica de fora, e por quê
 
 - **Classificação prudencial (S1–S4):** é um segmento por porte e perfil de risco, usado pela ANS para
