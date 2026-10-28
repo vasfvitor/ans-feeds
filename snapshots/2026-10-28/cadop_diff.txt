@@ -1,0 +1,4 @@
+### Relatorio_cadop.csv (snapshots/2026-10-27 → snapshots/2026-10-28): 1106 → 1106; entraram 0, saíram 0, alterados 1
+  campos alterados: {'LOGRADOURO': 1, 'NUMERO': 1, 'COMPLEMENTO': 1, 'BAIRRO': 1, 'CEP': 1}
+  ~ 424897 {'LOGRADOURO': ('AV. ANGELICA', 'RUA MARIA FIGUEIREDO'), 'NUMERO': ('2546', '202'), 'COMPLEMENTO': ('ANDAR 6 SALA 63', 'CONJUNTO ESCRITÓRIO 201'), 'BAIRRO': ('CONSOLAÇÃO', 'PARAÍSO'), 'CEP': ('01228200', '04002001')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-10-28
