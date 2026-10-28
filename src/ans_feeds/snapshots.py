@@ -34,9 +34,21 @@ def falhas(root: Path) -> list[dict]:
     out = []
     for linha in path.read_text(encoding="utf-8").splitlines():
         if linha.strip():
-            dia, fonte, motivo = (linha.split("\t") + ["", ""])[:3]
+            dia, fonte, motivo = linha.split("\t", 2)
             out.append({"dia": dia, "fonte": fonte, "motivo": motivo})
     return out
+
+
+def estado(root: Path, name: str) -> list[str] | None:
+    """The ESTADO.tsv row of `name` (scripts/snapshot.sh writes it: name, url, Last-Modified,
+    sha256, bytes, snapshot day, kept), or None when the file or the row is absent."""
+    path = Path(root) / "ESTADO.tsv"
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            cols = line.split("\t")
+            if cols[0] == name:
+                return cols
+    return None
 
 
 def latest(root: Path, name: str) -> Path | None:

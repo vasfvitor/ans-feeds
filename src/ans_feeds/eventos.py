@@ -59,13 +59,8 @@ def rows(path: Path) -> list[dict[str, str]]:
 
 
 def source_url(root: Path, name: str) -> str:
-    estado = root / "ESTADO.tsv"
-    if estado.is_file():
-        for line in estado.read_text(encoding="utf-8").splitlines():
-            cols = line.split("\t")
-            if len(cols) > 1 and cols[0] == name:
-                return cols[1]
-    return ""
+    cols = snapshots.estado(root, name)
+    return cols[1] if cols and len(cols) > 1 else ""
 
 
 def _with_seen(

@@ -60,3 +60,14 @@ def test_falhas_reads_what_the_last_run_could_not_update(tree):
             "motivo": "1354 bytes contra 6756 na versão anterior",
         }
     ]
+
+
+def test_a_failed_source_gets_the_subject_the_portal_labels():
+    from ans_feeds.site import assunto_da_fonte
+
+    assert assunto_da_fonte("pda-023-igr.csv") == "reclamacoes"
+    assert assunto_da_fonte("202609_Indice_de_Efetivo_Pagamento.csv") == "ressarcimento"
+    assert assunto_da_fonte("HC_2027.csv") == "ressarcimento"
+    assert assunto_da_fonte("listas RN 623") == assunto_da_fonte("Lista_1T2026.pdf") == "rn623"
+    assert assunto_da_fonte("Relatorio_cadop.csv") == "cadastro"
+    assert assunto_da_fonte("outra.csv") is None

@@ -17,7 +17,6 @@ trap 'rm -rf "$tmp"' EXIT
 ua="ans-feeds/0 (+https://github.com/vasfvitor/ans-feeds)"
 ftp=https://dadosabertos.ans.gov.br/FTP/PDA
 govbr=https://www.gov.br/ans/pt-br
-falhas=0
 # RAIZ/FALHAS.tsv: as fontes que falharam nesta execução (dia, nome, motivo), reescrito a cada vez
 # e vazio quando nada falha; o build publica isso para o portal dizer qual fonte não atualizou.
 lista_falhas=$tmp/falhas.tsv
@@ -25,7 +24,10 @@ lista_falhas=$tmp/falhas.tsv
 falhou() {
   echo "FALHA: $1 ($2)" >&2
   printf '%s\t%s\t%s\n' "$dia" "$1" "$2" >> "$lista_falhas"
-  falhas=$((falhas + 1))
+}
+# a fonte que não foi atualizada nesta execução fica com a linha anterior do estado
+manter_anterior() {
+  awk -F'\t' -v n="$1" '$1 == n' "$estado" >> "$novo_estado"
 }
 
 # nome<TAB>url<TAB>guardar (sim: copia para o snapshot; não: só registra Last-Modified e sha256)
@@ -90,13 +92,13 @@ while IFS=$'\t' read -r nome url guardar; do
   agora=$(date -u +%FT%TZ)
   case $code in
     304)
-      awk -F'\t' -v n="$nome" '$1 == n' "$estado" >> "$novo_estado"
+      manter_anterior "$nome"
       echo "igual (304)  $nome"
       continue ;;
     200) ;;
     *)
       falhou "$nome" "HTTP $code"
-      awk -F'\t' -v n="$nome" '$1 == n' "$estado" >> "$novo_estado"
+      manter_anterior "$nome"
       continue ;;
   esac
   sha=$(sha256sum "$tmp/corpo" | cut -d' ' -f1)
@@ -105,7 +107,7 @@ while IFS=$'\t' read -r nome url guardar; do
   # fica a versão anterior, e a execução falha
   if [[ "${bytes_ant:-}" =~ ^[0-9]+$ ]] && [ "$bytes_ant" -gt 0 ] && [ $((bytes * 2)) -lt "$bytes_ant" ]; then
     falhou "$nome" "$bytes bytes contra $bytes_ant na versão anterior"
-    awk -F'\t' -v n="$nome" '$1 == n' "$estado" >> "$novo_estado"
+    manter_anterior "$nome"
     continue
   fi
   if [ "$sha" = "${sha_ant:-}" ]; then
@@ -136,5 +138,6 @@ if [ ${#guardados[@]} -gt 0 ]; then
   (cd "$dest" && sha256sum -- $(ls | sed '/^SHA256SUMS$/d;/^FONTES.tsv$/d;/^cadop_diff.txt$/d') > SHA256SUMS)
 fi
 cp "$lista_falhas" "$raiz/FALHAS.tsv"
+falhas=$(wc -l < "$lista_falhas")
 echo "guardados em $dest: ${#guardados[@]}; falhas: $falhas"
 [ "$falhas" -eq 0 ]

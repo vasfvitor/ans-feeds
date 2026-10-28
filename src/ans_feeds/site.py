@@ -12,7 +12,8 @@ import json
 import re
 import shutil
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -233,6 +234,35 @@ def feed_bytes(
     )
 
 
+# a failed source's subject, as the `fontes` keys of dados/operadora/*.json (the portal's labels);
+# the names are this package's own constants, or the page names scripts/snapshot.sh gives
+ASSUNTOS = {
+    ev.ATIVAS: "cadastro",
+    ev.CANCELADAS: "cancelamentos",
+    operadoras.IGR: "reclamacoes",
+    operadoras.IDSS: "idss",
+    ev.DIRECAO_TECNICA: "direcao_tecnica",
+    portabilidade.PAGINA: "portabilidade",
+    "índice de ressarcimento": "ressarcimento",
+    "listas RN 623": "rn623",
+}
+
+
+def assunto_da_fonte(fonte: str) -> str | None:
+    if operadoras.RESSARCIMENTO.match(fonte) or fonte.startswith("HC_"):
+        return "ressarcimento"
+    if fonte.endswith(".pdf"):  # the RN 623 lists
+        return "rn623"
+    return ASSUNTOS.get(fonte)
+
+
+def _iso(cols: list[str] | None) -> str | None:
+    """An ESTADO.tsv row's Last-Modified as ISO 8601 UTC, or None when there is none."""
+    if not cols or len(cols) < 3 or cols[2] in ("", "-"):
+        return None
+    return parsedate_to_datetime(cols[2]).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def compact(obj: object) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n"
 
@@ -433,12 +463,7 @@ def build_site(
     for o in registros:
         write(f"dados/operadora/{o['registro']}.json", compact(o))
     # every operator in one file: the portal build reads this instead of ~1,340 requests
-    # the sources the last run could not update: the portal says which numbers are older
-    falhas = snapshots.falhas(snapshots_dir)
-    write(
-        "dados/todas.json",
-        compact({"date": stamp_day, "falhas": falhas, "operadoras": registros}),
-    )
+    write("dados/todas.json", compact({"date": stamp_day, "operadoras": registros}))
     write("dados/schema.md", operadoras.SCHEMA.read_text(encoding="utf-8"))
     # the same records as tables for people who redistribute (Procon, press): no ranking
     for nome, texto in tabelas(registros, date.fromisoformat(stamp_day)).items():
@@ -451,7 +476,12 @@ def build_site(
         "mais_recente": geral[0].data.isoformat() if geral else None,
         "portabilidade_atualizada_em": atualizado.date().isoformat() if atualizado else None,
         "operadoras": len(registros),
-        "falhas": falhas,
+        # the sources the last run could not update, with the subject the portal labels them by
+        "falhas": [
+            {**f, "assunto": assunto_da_fonte(f["fonte"])} for f in snapshots.falhas(snapshots_dir)
+        ],
+        # the CADOP changes every weekday at the ANS: its age says whether the source has stopped
+        "cadop_last_modified": _iso(snapshots.estado(snapshots_dir, ev.ATIVAS)),
     }
     write("meta.json", json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
     return meta
