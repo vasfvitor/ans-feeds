@@ -11,6 +11,14 @@ name: feeds
 on:
   schedule:
     - cron: "30 10 * * *"   # 07:30 America/Sao_Paulo
+  # a code or contract change reaches the site at once (build only, no snapshot)
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/feeds.yml"
   workflow_dispatch:
     inputs:
       build_only:
@@ -27,7 +35,7 @@ concurrency:
 
 jobs:
   snapshot:
-    if: ${{ !inputs.build_only }}
+    if: ${{ github.event_name != 'push' && !inputs.build_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -41,6 +49,7 @@ jobs:
         run: bash scripts/snapshot.sh || echo "failed=true" >> "$GITHUB_OUTPUT"
       - name: CADOP diff against the previous snapshot
         run: |
+          set -o pipefail   # a crash in cadop_diff.py must not hide behind tee
           day=${{ steps.day.outputs.day }}
           if [ -f "snapshots/$day/Relatorio_cadop.csv" ]; then
             prev=$(ls -d snapshots/20??-??-?? | sed 's:.*/::' | awk -v d="$day" '$0 < d' | tail -1)
@@ -78,6 +87,9 @@ jobs:
     if: ${{ always() && needs.snapshot.result != 'cancelled' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      date: ${{ steps.estado.outputs.date }}
+      cadop_dias: ${{ steps.estado.outputs.cadop_dias }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
         with:
@@ -94,6 +106,17 @@ jobs:
             extra=(--notice "A coleta de hoje falhou em parte; estes dados são da última coleta bem-sucedida de cada fonte.")
           fi
           uv run ans-feeds build --snapshots snapshots --site site "${extra[@]}"
+      # read here, without failing, for the alarmes job: a red alarm never holds back a deploy
+      - name: Record the data's date and the CADOP's age
+        id: estado
+        run: |
+          echo "date=$(jq -r .date site/meta.json)" >> "$GITHUB_OUTPUT"
+          lm=$(awk -F'\t' '$1 == "Relatorio_cadop.csv" {print $3}' snapshots/ESTADO.tsv)
+          if [ -n "$lm" ] && [ "$lm" != "-" ]; then
+            echo "cadop_dias=$(( ( $(date -u +%s) - $(date -u -d "$lm" +%s) ) / 86400 ))" >> "$GITHUB_OUTPUT"
+          else
+            echo "cadop_dias=9999" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9   # v5.0.0
         with:
           path: site
@@ -113,3 +136,35 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346   # v5.0.1
+
+  alarmes:
+    # after the deploy, so what was collected is always published. Red when the CADOP (daily at
+    # the ANS) stopped changing, or when the portal, which only reads this data, is days behind
+    # it: the portal's own schedule can be disabled by GitHub and nothing else would notice.
+    needs: [build, deploy]
+    if: ${{ always() && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the CADOP's age and the portal's lag
+        env:
+          DATE: ${{ needs.build.outputs.date }}
+          CADOP_DIAS: ${{ needs.build.outputs.cadop_dias }}
+          PORTAL: https://saude.abelhaninja.de/build.json
+        run: |
+          falhou=0
+          echo "CADOP: Last-Modified $CADOP_DIAS days ago"
+          if [ "$CADOP_DIAS" -gt 7 ]; then
+            echo "::error::the CADOP has not changed at the ANS for $CADOP_DIAS days"
+            falhou=1
+          fi
+          portal=$(curl -fsS "$PORTAL?t=$(date +%s)" | jq -r '.dados_date // empty') || portal=""
+          echo "data here: $DATE; portal built from: ${portal:-?}"
+          if [ -z "$portal" ]; then
+            echo "::error::could not read $PORTAL"
+            falhou=1
+          elif [ $(( ( $(date -u -d "$DATE" +%s) - $(date -u -d "$portal" +%s) ) / 86400 )) -gt 2 ]; then
+            echo "::error::the portal is built from $portal, more than 2 days behind $DATE"
+            falhou=1
+          fi
+          exit "$falhou"
