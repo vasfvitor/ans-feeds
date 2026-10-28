@@ -28,6 +28,15 @@ COBERTURAS = {
     "Exclusivamente odontológica": "odontológica",
 }
 SERIE_TRIMESTRES = 8
+# RN 623/2024 "Excelência" target, per year: the index (complaints per month per 100,000
+# beneficiaries in the quarter) must stay at or below it, or the quarter must have at most
+# ATALHO_RN623 complaints, in every coverage the operator has. 2026: the text of the 2T2026 lists
+# (the IDSS 2026 target of indicator 3.3 plus 20%); rebuilding that list from the IGR with it
+# matches 426 of 430 operators (pesquisa/VALIDACAO.md, question 1). A year missing here gives no
+# verdict: add it from the first list of the year.
+META_RN623 = {2026: {"médico-hospitalar": 2.4, "odontológica": 0.6}}
+ATALHO_RN623 = {"médico-hospitalar": 3, "odontológica": 2}
+LISTA_RN623 = re.compile(r"Excel.*_(\dT\d{4})[_.]")
 CANCELADAS_ANOS = 5
 IDSS_DIMENSOES = {
     "IDQS": "qualidade da atenção à saúde",
@@ -69,13 +78,13 @@ def mediana(valores: list[float]) -> float | None:
     return round(statistics.median(valores), 2) if valores else None
 
 
-def reclamacoes(root: Path) -> tuple[dict[str, list[dict]], dict[str, int]]:
+def reclamacoes(root: Path) -> tuple[dict[str, list[dict]], dict[str, int], str | None]:
     """Quarterly complaint index (RN 623 formula: complaints per month per 100,000 beneficiaries),
     per operator and coverage, with the median of operators of the same size and coverage in the
-    latest closed quarter. Also returns the beneficiaries in the latest month."""
+    latest closed quarter. Also returns the beneficiaries in the latest month, and that month."""
     path = snapshots.latest(root, IGR)
     if not path:
-        return {}, {}
+        return {}, {}, None
     meses: dict[tuple[str, str, str], list[tuple[str, int, int, str]]] = defaultdict(list)
     competencias: set[str] = set()
     with path.open(encoding="utf-8", newline="") as f:
@@ -146,7 +155,45 @@ def reclamacoes(root: Path) -> tuple[dict[str, list[dict]], dict[str, int]]:
         for comp, _, b, _ in lst:
             if comp == ultima_comp:
                 beneficiarios[reg] += b
-    return dict(out), dict(beneficiarios)
+    return dict(out), dict(beneficiarios), ultima_comp
+
+
+def listas_rn623(root: Path) -> dict[str, list[str]]:
+    """Quarter -> URLs of the official Excelência lists (MH and OD PDFs) the snapshots hold."""
+    out: dict[str, list[str]] = defaultdict(list)
+    estado = root / "ESTADO.tsv"
+    if estado.is_file():
+        for line in sorted(estado.read_text(encoding="utf-8").splitlines()):
+            cols = line.split("\t")
+            m = LISTA_RN623.search(cols[0])
+            if m and len(cols) > 1 and cols[0].lower().endswith(".pdf"):
+                out[m.group(1)].append(cols[1])
+    return dict(out)
+
+
+def meta_rn623(reclamacoes_op: list[dict], listas: dict[str, list[str]]) -> dict | None:
+    """Whether the latest closed quarter meets the RN 623 Excelência target, by our arithmetic on
+    the IGR (the ANS reprocesses it every month, so a published list can differ by a few
+    operators). None without complaint data or without the target of that year."""
+    if not reclamacoes_op:
+        return None
+    tri = reclamacoes_op[0]["trimestre"]
+    meta = META_RN623.get(int(tri[2:]))
+    if not meta:
+        return None
+    atingiu = all(
+        r["reclamacoes"] <= ATALHO_RN623[r["cobertura"]]
+        or (r["indice"] is not None and r["indice"] <= meta[r["cobertura"]])
+        for r in reclamacoes_op
+    )
+    coberturas = [r["cobertura"] for r in reclamacoes_op]
+    return {
+        "trimestre": tri,
+        "atingiu": atingiu,
+        "meta": {c: meta[c] for c in coberturas},
+        "ate_reclamacoes": {c: ATALHO_RN623[c] for c in coberturas},
+        "listas": listas.get(tri, []),
+    }
 
 
 def idss(root: Path) -> tuple[dict[str, dict], str | None]:
@@ -222,7 +269,8 @@ def operadoras(root: Path, todos: list[Evento]) -> list[dict]:
     """Active operators plus those cancelled in the last five years."""
     hoje = date.fromisoformat(snapshots.days(root)[-1])
     limite = hoje - timedelta(days=365 * CANCELADAS_ANOS)
-    recl, beneficiarios = reclamacoes(root)
+    recl, beneficiarios, competencia = reclamacoes(root)
+    listas = listas_rn623(root)
     notas, _ = idss(root)
     ress, ress_arquivo = ressarcimento(root)
     por_reg: dict[str, list[Evento]] = defaultdict(list)
@@ -269,7 +317,9 @@ def operadoras(root: Path, todos: list[Evento]) -> list[dict]:
                     "situacao": situacao,
                     "cancelamento": cancelamento,
                     "beneficiarios": beneficiarios.get(reg),
+                    "beneficiarios_em": competencia if reg in beneficiarios else None,
                     "reclamacoes": recl.get(reg, []),
+                    "meta_rn623": meta_rn623(recl.get(reg, []), listas),
                     "idss": notas.get(reg),
                     "ressarcimento": ress.get(reg),
                     "portabilidade_vigente": [

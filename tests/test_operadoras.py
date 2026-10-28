@@ -34,7 +34,7 @@ def test_quarterly_index_and_peer_median(tree):
         ]
     linhas.append(igr_row("000004", 1, 1000, "2026-09"))  # one month only: no quarter
     write_day(tree, "2026-10-22", {operadoras.IGR: "".join(linhas)})
-    recl, benef = operadoras.reclamacoes(tree)
+    recl, benef, _ = operadoras.reclamacoes(tree)
     (r,) = recl["000003"]
     assert r["trimestre"] == "3T2026" and r["indice"] == 30.0 and r["reclamacoes"] == 90
     assert r["mediana_mesmo_porte"] == 6.0 and r["operadoras_mesmo_porte"] == 3
@@ -109,4 +109,37 @@ def test_index_matches_records(reais):
         "modalidade",
         "situacao",
         "beneficiarios",
+    }
+
+
+def test_meta_rn623_needs_every_coverage_under_the_target_or_few_complaints():
+    def linha(cob, indice, n):
+        return {"trimestre": "3T2026", "cobertura": cob, "indice": indice, "reclamacoes": n}
+
+    mh, od = "médico-hospitalar", "odontológica"
+    listas = {"3T2026": ["https://x.invalid/excelencia.pdf"]}
+    assert operadoras.meta_rn623([linha(mh, 2.4, 50)], listas)["atingiu"]
+    assert operadoras.meta_rn623([linha(mh, 9.0, 3)], {})["atingiu"]  # few complaints
+    v = operadoras.meta_rn623([linha(mh, 2.0, 50), linha(od, 0.7, 3)], listas)
+    assert not v["atingiu"]  # cumulative: the odontológica side misses
+    assert v["meta"] == {mh: 2.4, od: 0.6} and v["listas"] == listas["3T2026"]
+    assert operadoras.meta_rn623([linha(mh, None, 0)], {})["atingiu"]
+    assert operadoras.meta_rn623([], {}) is None
+    sem_meta = [{**linha(mh, 1.0, 1), "trimestre": "1T2031"}]
+    assert operadoras.meta_rn623(sem_meta, {}) is None  # no target for that year: no verdict
+
+
+def test_official_lists_are_found_by_quarter(tree):
+    (tree / "ESTADO.tsv").write_text(
+        "Lista_OPS_MH_Excelncia__2T2026__GCOMS.pdf\thttps://x.invalid/mh.pdf\n"
+        "Lista_OPS_MH_Reduo__2T2026__GCOMS.pdf\thttps://x.invalid/red.pdf\n"
+        "Lista_OPS_Excelncia_OD__3T2025__com_texto.pdf\thttps://x.invalid/od.pdf\n"
+        "Lista_de_Excelncia_no_relacionamento_com_o_consumidor___assistncia_mdicohospitalar__4T2025"
+        ".pdf\thttps://x.invalid/4t.pdf\n",
+        encoding="utf-8",
+    )
+    assert operadoras.listas_rn623(tree) == {
+        "2T2026": ["https://x.invalid/mh.pdf"],
+        "3T2025": ["https://x.invalid/od.pdf"],
+        "4T2025": ["https://x.invalid/4t.pdf"],
     }

@@ -16,6 +16,7 @@ fonte de cada número: nenhuma nota ou rótulo próprio. Datas em ISO (`AAAA-MM-
 | `modalidade` | ex.: Medicina de Grupo, Cooperativa Médica, Odontologia de Grupo |
 | `situacao` | `ativa` ou `cancelada` |
 | `beneficiarios` | total no último mês do IGR (todas as coberturas), ou `null` |
+| `beneficiarios_em` | o mês desse total (`AAAA-MM`), ou `null` com ele |
 
 ## `operadora/<registro>.json`
 
@@ -30,6 +31,7 @@ Os campos do índice, mais:
 | `reclamacoes[].reclamacoes`, `beneficiarios_media` | a base do índice (com poucas reclamações, o índice oscila muito) |
 | `reclamacoes[].porte`, `mediana_mesmo_porte`, `operadoras_mesmo_porte` | a comparação: mediana do índice entre as operadoras do mesmo porte e cobertura, no mesmo trimestre. O porte é o da ANS (`PORTE_OPERADORA` do IGR, pelos vínculos ativos no SIB): Pequeno abaixo de 20 mil, Médio de 20 mil a 100 mil, Grande acima de 100 mil (dicionário do IGR, versão 2023) |
 | `reclamacoes[].serie` | até 8 trimestres: `{trimestre, indice, reclamacoes}` |
+| `meta_rn623` | a meta de reclamações da RN 623 (lista de Excelência) no `trimestre` das `reclamacoes`, pela nossa conta sobre o IGR: `atingiu` é `true` quando, em cada cobertura, o `indice` fica até a `meta` do ano (2026: 2,4 médico-hospitalar, 0,6 odontológica) ou as reclamações ficam até `ate_reclamacoes` (3 e 2). `listas` traz os PDFs oficiais desse trimestre, quando já saíram. Refazendo a lista do 2T2026 assim, 424 das 430 operadoras batem e 1 sobra; as que faltam não têm os 3 meses no IGR. `null` sem reclamações completas no trimestre ou sem a meta do ano |
 | `idss` | Índice de Desempenho da Saúde Suplementar (0 a 1, maior é melhor) do último ano publicado: `valor`, `ano`, `ano_base`, as 4 `dimensoes` e a `mediana_mesma_modalidade`; com `valor` `null`, o `motivo` |
 | `ressarcimento` | ressarcimento ao SUS (quando um cliente da operadora é atendido no SUS, a operadora deve pagar): `indice_pagamento` é o índice de efetivo pagamento da ANS, acumulado e nos últimos 5 anos, na `competencia`, que é (pago + parcelado) ÷ cobrado; `valor_cobrado`, `valor_pago` e `valor_parcelado` são a base, acumulada. A base não separa valor em discussão administrativa ou judicial: o que não foi pago nem parcelado pode estar contestado |
 | `portabilidade_vigente` | lista de `{ro, data, link}` quando os clientes podem trocar de plano sem cumprir carência de novo |
