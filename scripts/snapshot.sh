@@ -18,6 +18,15 @@ ua="ans-feeds/0 (+https://github.com/vasfvitor/ans-feeds)"
 ftp=https://dadosabertos.ans.gov.br/FTP/PDA
 govbr=https://www.gov.br/ans/pt-br
 falhas=0
+# RAIZ/FALHAS.tsv: as fontes que falharam nesta execução (dia, nome, motivo), reescrito a cada vez
+# e vazio quando nada falha; o build publica isso para o portal dizer qual fonte não atualizou.
+lista_falhas=$tmp/falhas.tsv
+: > "$lista_falhas"
+falhou() {
+  echo "FALHA: $1 ($2)" >&2
+  printf '%s\t%s\t%s\n' "$dia" "$1" "$2" >> "$lista_falhas"
+  falhas=$((falhas + 1))
+}
 
 # nome<TAB>url<TAB>guardar (sim: copia para o snapshot; não: só registra Last-Modified e sha256)
 ano=$(TZ=America/Sao_Paulo date +%Y)
@@ -40,22 +49,26 @@ EOF
 lista=$govbr/assuntos/informacoes-e-avaliacoes-de-operadoras/lista-excelencia-e-reducao-das-reclamacoes-das-operadoras
 if curl -sS --fail --max-time 120 -A "$ua" -o "$tmp/lista.html" "$lista"; then
   pdfs=$(sed -n 's/.*href="\(https:\/\/www\.gov\.br\/ans\/[^"]*Lista[^"]*\.pdf\)".*/\1/p' "$tmp/lista.html" | sort -u)
+  # uma página em manutenção ou redesenhada responde 200 sem nenhum link: não é "nada novo"
+  [ -z "$pdfs" ] && falhou "listas RN 623" "nenhum PDF na página"
   while IFS= read -r url; do
     [ -n "$url" ] && fontes+=$'\n'"${url##*/}"$'\t'"$url"$'\t'sim
   done <<< "$pdfs"
 else
-  echo "FALHA: página das listas RN 623" >&2
-  falhas=$((falhas + 1))
+  falhou "listas RN 623" "página fora do ar"
 fi
 
 # Índice de ressarcimento ao SUS: um arquivo por mês (AAAAMM_...), só o mais recente.
 ress=$ftp/ressarcimento_ao_SUS_indice_efetivo_pagamento
 if curl -sS --fail --max-time 120 -A "$ua" -o "$tmp/ress.html" "$ress/"; then
   arq=$(sed -n 's/.*href="\([0-9]\{6\}_Indice_de_Efetivo_Pagamento\.csv\)".*/\1/p' "$tmp/ress.html" | sort | tail -1)
-  [ -n "$arq" ] && fontes+=$'\n'"$arq"$'\t'"$ress/$arq"$'\t'sim
+  if [ -n "$arq" ]; then
+    fontes+=$'\n'"$arq"$'\t'"$ress/$arq"$'\t'sim
+  else
+    falhou "índice de ressarcimento" "nenhum arquivo no diretório"
+  fi
 else
-  echo "FALHA: diretório do índice de ressarcimento" >&2
-  falhas=$((falhas + 1))
+  falhou "índice de ressarcimento" "diretório fora do ar"
 fi
 
 touch "$estado"
@@ -65,8 +78,8 @@ guardados=()
 
 while IFS=$'\t' read -r nome url guardar; do
   [ -z "$nome" ] && continue
-  lm_ant='' sha_ant='' snap_ant=''
-  IFS=$'\t' read -r lm_ant sha_ant snap_ant < <(awk -F'\t' -v n="$nome" '$1 == n {print $3 "\t" $4 "\t" $6}' "$estado") || true
+  lm_ant='' sha_ant='' bytes_ant='' snap_ant=''
+  IFS=$'\t' read -r lm_ant sha_ant bytes_ant snap_ant < <(awk -F'\t' -v n="$nome" '$1 == n {print $3 "\t" $4 "\t" $5 "\t" $6}' "$estado") || true
   cond=()
   [ -n "${lm_ant:-}" ] && [ "$lm_ant" != "-" ] && cond=(-H "If-Modified-Since: $lm_ant")
   if ! code=$(curl -sS --max-time 600 -A "$ua" "${cond[@]}" -D "$tmp/h" -o "$tmp/corpo" -w '%{http_code}' "$url"); then
@@ -82,13 +95,19 @@ while IFS=$'\t' read -r nome url guardar; do
       continue ;;
     200) ;;
     *)
-      echo "FALHA ($code) $nome" >&2
-      falhas=$((falhas + 1))
+      falhou "$nome" "HTTP $code"
       awk -F'\t' -v n="$nome" '$1 == n' "$estado" >> "$novo_estado"
       continue ;;
   esac
   sha=$(sha256sum "$tmp/corpo" | cut -d' ' -f1)
   bytes=$(stat -c %s "$tmp/corpo")
+  # menos da metade do tamanho anterior: arquivo cortado, página de erro ou de manutenção com 200;
+  # fica a versão anterior, e a execução falha
+  if [[ "${bytes_ant:-}" =~ ^[0-9]+$ ]] && [ "$bytes_ant" -gt 0 ] && [ $((bytes * 2)) -lt "$bytes_ant" ]; then
+    falhou "$nome" "$bytes bytes contra $bytes_ant na versão anterior"
+    awk -F'\t' -v n="$nome" '$1 == n' "$estado" >> "$novo_estado"
+    continue
+  fi
   if [ "$sha" = "${sha_ant:-}" ]; then
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$nome" "$url" "$lm" "$sha" "$bytes" "$snap_ant" "$guardar" >> "$novo_estado"
     echo "igual (sha)  $nome"
@@ -116,5 +135,6 @@ sort -t$'\t' -k1,1 "$novo_estado" > "$estado"
 if [ ${#guardados[@]} -gt 0 ]; then
   (cd "$dest" && sha256sum -- $(ls | sed '/^SHA256SUMS$/d;/^FONTES.tsv$/d;/^cadop_diff.txt$/d') > SHA256SUMS)
 fi
+cp "$lista_falhas" "$raiz/FALHAS.tsv"
 echo "guardados em $dest: ${#guardados[@]}; falhas: $falhas"
 [ "$falhas" -eq 0 ]

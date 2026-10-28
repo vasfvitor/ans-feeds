@@ -1,7 +1,8 @@
 from collections import Counter
 from datetime import date, datetime
 
-from conftest import SNAPSHOTS
+import pytest
+from conftest import SNAPSHOTS, write_day
 
 from ans_feeds import portabilidade
 
@@ -52,3 +53,11 @@ def test_events_and_match_rate():
     # Measured on 2026-10-22: 95 of 137 rows match the CADOP exactly (the rest are old rows whose
     # legal name changed); a drop means the normalization broke.
     assert sum(1 for e in eventos if e.registro) >= 95
+
+
+def test_a_page_that_reads_as_empty_after_a_full_one_fails_the_build(tree):
+    # a redesigned page parses to no rows: publishing that would drop every portability warning
+    write_day(tree, "2026-10-22", {portabilidade.PAGINA: PAGINA.read_bytes()})
+    write_day(tree, "2026-10-23", {portabilidade.PAGINA: "<html><body>nova página</body></html>"})
+    with pytest.raises(RuntimeError, match="no rows, while the version of 2026-10-22"):
+        portabilidade.portabilidades(tree)

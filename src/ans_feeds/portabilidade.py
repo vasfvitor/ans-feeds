@@ -152,6 +152,13 @@ def portabilidades(root: Path) -> tuple[list[Evento], datetime | None]:
     if not path:
         return [], None
     linhas, atualizado = ler(path)
+    if not linhas:  # a redesigned page reads as no operator at all: the warnings would vanish
+        versoes = snapshots.versions(root, PAGINA)
+        if len(versoes) > 1 and ler(versoes[-2][1])[0]:
+            raise RuntimeError(
+                f"{PAGINA} of {versoes[-1][0]}: no rows, while the version of {versoes[-2][0]} "
+                "had some; the page probably changed layout and portabilidade.ler needs a fix"
+            )
     razao, fantasia = indice_cadop(root)
     seen = snapshots.first_seen(root, PAGINA, lambda p: map(_chave, ler(p)[0]))
     fonte = eventos.source_url(root, PAGINA)

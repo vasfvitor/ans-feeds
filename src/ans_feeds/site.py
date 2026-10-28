@@ -433,7 +433,12 @@ def build_site(
     for o in registros:
         write(f"dados/operadora/{o['registro']}.json", compact(o))
     # every operator in one file: the portal build reads this instead of ~1,340 requests
-    write("dados/todas.json", compact({"date": stamp_day, "operadoras": registros}))
+    # the sources the last run could not update: the portal says which numbers are older
+    falhas = snapshots.falhas(snapshots_dir)
+    write(
+        "dados/todas.json",
+        compact({"date": stamp_day, "falhas": falhas, "operadoras": registros}),
+    )
     write("dados/schema.md", operadoras.SCHEMA.read_text(encoding="utf-8"))
     # the same records as tables for people who redistribute (Procon, press): no ranking
     for nome, texto in tabelas(registros, date.fromisoformat(stamp_day)).items():
@@ -446,6 +451,7 @@ def build_site(
         "mais_recente": geral[0].data.isoformat() if geral else None,
         "portabilidade_atualizada_em": atualizado.date().isoformat() if atualizado else None,
         "operadoras": len(registros),
+        "falhas": falhas,
     }
     write("meta.json", json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
     return meta

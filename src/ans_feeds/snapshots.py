@@ -25,6 +25,20 @@ def versions(root: Path, name: str) -> list[tuple[str, Path]]:
     return [(d, root / d / name) for d in days(root) if (root / d / name).is_file()]
 
 
+def falhas(root: Path) -> list[dict]:
+    """The sources the last snapshot run could not update, from FALHAS.tsv (written by
+    scripts/snapshot.sh): [{dia, fonte, motivo}], empty when none failed or the file is absent."""
+    path = Path(root) / "FALHAS.tsv"
+    if not path.is_file():
+        return []
+    out = []
+    for linha in path.read_text(encoding="utf-8").splitlines():
+        if linha.strip():
+            dia, fonte, motivo = (linha.split("\t") + ["", ""])[:3]
+            out.append({"dia": dia, "fonte": fonte, "motivo": motivo})
+    return out
+
+
 def latest(root: Path, name: str) -> Path | None:
     found = versions(root, name)
     return found[-1][1] if found else None

@@ -43,9 +43,15 @@ Os campos do índice, mais:
 
 ## `todas.json`
 
-`{date, operadoras: [...]}`, em que `date` é o dia dos dados (o mesmo do `meta.json`) e cada item é
-exatamente o conteúdo do `operadora/<registro>.json` correspondente, na ordem do índice. É para quem
+`{date, falhas, operadoras: [...]}`, em que `date` é o dia dos dados (o mesmo do `meta.json`) e cada item
+é exatamente o conteúdo do `operadora/<registro>.json` correspondente, na ordem do índice. É para quem
 precisa de tudo de uma vez; para uma operadora só, use o arquivo individual.
+
+`falhas` (também no `meta.json`) lista as fontes que a última coleta não conseguiu atualizar:
+`{dia, fonte, motivo}`, com `fonte` como o nome do arquivo da ANS (por exemplo `pda-023-igr.csv`) ou o
+nome da página. Lista vazia quando tudo foi atualizado. Os números dessas fontes são os da última versão
+coletada, não do dia em `date`. Um arquivo novo com menos da metade do tamanho anterior conta como falha e
+não substitui o anterior.
 
 ## `tabelas/`
 

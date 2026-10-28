@@ -46,3 +46,17 @@ def test_real_tree():
         "2026-10-22",
         "2026-10-23",
     ]
+
+
+def test_falhas_reads_what_the_last_run_could_not_update(tree):
+    assert snapshots.falhas(tree) == []  # no file: nothing failed
+    (tree / "FALHAS.tsv").write_text(
+        "2026-10-29\tpda-023-igr.csv\t1354 bytes contra 6756 na versão anterior\n", encoding="utf-8"
+    )
+    assert snapshots.falhas(tree) == [
+        {
+            "dia": "2026-10-29",
+            "fonte": "pda-023-igr.csv",
+            "motivo": "1354 bytes contra 6756 na versão anterior",
+        }
+    ]
