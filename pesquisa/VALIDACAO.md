@@ -193,6 +193,37 @@ maio a abril.
 
 Script: `scripts/pda055.py`.
 
+### Beneficiários por município (PDA-024): `informacoes_consolidadas_de_beneficiarios-024/AAAAMM/pda-024-icb-UF-AAAA_MM.zip`
+
+Medido em 28/10/2026, com o Acre da competência 2026-08: `Last-Modified: Mon, 05 Oct 2026 13:34:10 GMT`;
+ZIP de 404.581 bytes com um CSV de 6.074.958 bytes. UTF-8, LF, `;`, cabeçalho sem aspas, 22 colunas,
+20.040 linhas e nenhuma duplicada. O dicionário (`.ods`, GEPIN/DIDES) é de 25/06/2024.
+
+- **Granularidade.** Uma linha é operadora × município de residência × plano × sexo × faixa etária ×
+  vínculo, com `QT_BENEFICIARIO_ATIVO`, `_ADERIDO` e `_CANCELADO` da competência. Para uma página por
+  município, basta somar `QT_BENEFICIARIO_ATIVO` por (`CD_OPERADORA`, `CD_MUNICIPIO`).
+- **Chaves.**
+  - `CD_OPERADORA` tem 6 dígitos, como no CADOP.
+  - `CD_MUNICIPIO` tem o IBGE de 6 dígitos, sem o dígito verificador.
+  - `CD_PLANO` com `TP_VIGENCIA_PLANO` liga ao conjunto de produtos.
+  - `SG_UF` pode ser `EX` (exterior) e `XX` (não identificado), e o arquivo `XX` traz essas linhas.
+- **Defasagem e tamanho.**
+  - Mensal, com uns 2 meses de atraso: a competência 2026-08 saiu em 05/10.
+  - Os 28 ZIPs de 2026-08 somam cerca de 385 MB, de 139 KB (XX) a 129 MB (SP). Descompactados, são cerca
+    de 6 GB, porque o Acre cresce 15 vezes.
+  - A anotação anterior ("ZIPs de até 3 GB", pergunta 3) estava errada.
+- **O Acre em números** (2026-08): 67.795 beneficiários ativos, 219 operadoras e 22 municípios.
+  - Contratação: 47,7% coletivo empresarial, 28,4% coletivo por adesão, 23,8% individual.
+  - Abrangência: 71,8% nacional, 19,6% municipal, 7,0% grupo de municípios.
+  - Rio Branco tem 59.628 beneficiários em 181 operadoras. Só 35 delas têm 100 clientes ou mais, e 102
+    têm de 1 a 9. A cauda é gente com plano nacional ou que mudou de cidade.
+  - Líder: Unimed Rio Branco, com 26.981.
+- **Para o produto.** "Tem clientes aqui" não é "vende plano aqui". Uma lista por município precisa de
+  um corte (por exemplo, 100 clientes ou 1% do município) e de dizer a abrangência do plano. O coletivo
+  empresarial segue a residência do beneficiário, não a sede da empresa: é o que o campo descreve.
+
+Scripts: `scripts/perfil.py` (formato) e `scripts/pda024.py` (somas por município).
+
 ### Fora do FTP
 
 - **Listas RN 623**, em `gov.br/ans/…/lista-excelencia-e-reducao-das-reclamacoes-das-operadoras`
@@ -336,8 +367,8 @@ administradoras.
 
 Das 40 que faltam em 2026-09, 30 nunca aparecem no IGR. Têm registro recente (de 2022-12-26 a
 2026-10-19) ou nenhum beneficiário; administradoras não têm beneficiário no SIB. O SIB e o PDA-024 só
-seriam necessários para quebrar por UF ou município: **pergunta anotada, não respondida** (ZIPs de até
-3 GB, fora desta etapa).
+seriam necessários para quebrar por UF ou município. **Respondida em 28/10/2026**: o PDA-024 serve, e o
+perfil está na seção dele, em Conjuntos.
 
 ### 6. Penalidades
 
