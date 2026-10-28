@@ -22,7 +22,8 @@ from .eventos import Evento
 
 SCHEMA = Path(__file__).with_name("dados_schema.md")
 IGR = "pda-023-igr.csv"
-IDSS = "pda-020-historico-idss-2016_2025.csv"
+# the year range in the name grows each year (…2016_2025.csv, then …2016_2026.csv)
+IDSS = re.compile(r"^pda-020-historico-idss-\d{4}_\d{4}\.csv$")
 RESSARCIMENTO = re.compile(r"^\d{6}_Indice_de_Efetivo_Pagamento\.csv$")
 COBERTURAS = {
     "Assistência médica": "médico-hospitalar",
@@ -253,17 +254,9 @@ def idss(root: Path) -> tuple[dict[str, dict], str | None]:
 
 
 def ressarcimento(root: Path) -> tuple[dict[str, dict], str | None]:
-    nomes = sorted(
-        {
-            p.name
-            for d in snapshots.days(root)
-            for p in (root / d).iterdir()
-            if RESSARCIMENTO.match(p.name)
-        }
-    )
-    if not nomes:
+    path = snapshots.latest(root, RESSARCIMENTO)
+    if not path:
         return {}, None
-    path = snapshots.latest(root, nomes[-1])
     out = {}
     for r in ev.rows(path):
         reg = ev.registro(r["CODIGO_OPERADORA"])
@@ -278,7 +271,7 @@ def ressarcimento(root: Path) -> tuple[dict[str, dict], str | None]:
             # the ANS index counts this as paid: (pago + parcelado) / cobrado, checked on every row
             "valor_parcelado": numero(r["VALOR_PARCELADO_ACUMULADO"]),
         }
-    return out, nomes[-1]
+    return out, path.name
 
 
 def _evento_curto(e: Evento) -> dict:
@@ -298,11 +291,12 @@ def operadoras(root: Path, todos: list[Evento]) -> list[dict]:
         if e.registro:
             por_reg[e.registro].append(e)
 
+    idss_path = snapshots.latest(root, IDSS)
     fontes = {
         "cadastro": ev.source_url(root, ev.ATIVAS),
         "cancelamentos": ev.source_url(root, ev.CANCELADAS),
         "reclamacoes": ev.source_url(root, IGR),
-        "idss": ev.source_url(root, IDSS),
+        "idss": ev.source_url(root, idss_path.name) if idss_path else "",
         "ressarcimento": ev.source_url(root, ress_arquivo) if ress_arquivo else "",
     }
     out = []

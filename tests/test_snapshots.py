@@ -70,4 +70,27 @@ def test_a_failed_source_gets_the_subject_the_portal_labels():
     assert assunto_da_fonte("HC_2027.csv") == "ressarcimento"
     assert assunto_da_fonte("listas RN 623") == assunto_da_fonte("Lista_1T2026.pdf") == "rn623"
     assert assunto_da_fonte("Relatorio_cadop.csv") == "cadastro"
+    assert assunto_da_fonte("pda-020-historico-idss-2016_2026.csv") == "idss"
+    assert assunto_da_fonte("histórico do IDSS") == "idss"
+    assert assunto_da_fonte("HC do ressarcimento") == "ressarcimento"
     assert assunto_da_fonte("outra.csv") is None
+
+
+def test_versions_by_pattern_run_across_renames(tree):
+    import re
+
+    hc = re.compile(r"^HC_\d{4}\.csv$")
+    write_day(tree, "2026-12-20", {"HC_2026.csv": "a"})
+    write_day(
+        tree, "2027-01-15", {"HC_2026.csv": "b"}
+    )  # a late revision of 2026, before 2027 exists
+    write_day(tree, "2027-02-10", {"HC_2027.csv": "c"})
+    nomes = [(dia, path.name) for dia, path in snapshots.versions(tree, hc)]
+    assert nomes == [
+        ("2026-12-20", "HC_2026.csv"),
+        ("2027-01-15", "HC_2026.csv"),
+        ("2027-02-10", "HC_2027.csv"),
+    ]
+    assert snapshots.latest(tree, hc).name == "HC_2027.csv"
+    assert snapshots.latest(tree, "HC_2026.csv").read_text() == "b"  # a plain name works as before
+    assert snapshots.latest(tree, re.compile(r"^nada$")) is None

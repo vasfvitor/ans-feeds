@@ -240,10 +240,11 @@ ASSUNTOS = {
     ev.ATIVAS: "cadastro",
     ev.CANCELADAS: "cancelamentos",
     operadoras.IGR: "reclamacoes",
-    operadoras.IDSS: "idss",
     ev.DIRECAO_TECNICA: "direcao_tecnica",
     portabilidade.PAGINA: "portabilidade",
     "índice de ressarcimento": "ressarcimento",
+    "HC do ressarcimento": "ressarcimento",
+    "histórico do IDSS": "idss",
     "listas RN 623": "rn623",
 }
 
@@ -251,6 +252,8 @@ ASSUNTOS = {
 def assunto_da_fonte(fonte: str) -> str | None:
     if operadoras.RESSARCIMENTO.match(fonte) or fonte.startswith("HC_"):
         return "ressarcimento"
+    if operadoras.IDSS.match(fonte):
+        return "idss"
     if fonte.endswith(".pdf"):  # the RN 623 lists
         return "rn623"
     return ASSUNTOS.get(fonte)

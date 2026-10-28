@@ -54,7 +54,9 @@ def dec(valor: float) -> str:
     return f"{valor:.2f}".replace(".", ",")
 
 
-def _vistos(root: Path, name: str, keys: Callable[[Path], Iterable[str]]) -> dict[str, datetime]:
+def _vistos(
+    root: Path, name: snapshots.Nome, keys: Callable[[Path], Iterable[str]]
+) -> dict[str, datetime]:
     """When each key first showed up in `name`; baseline keys get the first collection time."""
     versoes = snapshots.versions(root, name)
     if not versoes:
@@ -64,7 +66,7 @@ def _vistos(root: Path, name: str, keys: Callable[[Path], Iterable[str]]) -> dic
         return at or datetime.fromisoformat(dia).replace(tzinfo=ev.BRASILIA)
 
     dia0, path0 = versoes[0]
-    base = quando(dia0, snapshots.collected_at(root, dia0, name))
+    base = quando(dia0, snapshots.collected_at(root, dia0, path0.name))
     out = dict.fromkeys(keys(path0), base)
     for key, (dia, at) in snapshots.first_seen(root, name, keys).items():
         out[key] = quando(dia, at)

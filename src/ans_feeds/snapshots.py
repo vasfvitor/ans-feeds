@@ -20,9 +20,23 @@ def days(root: Path) -> list[str]:
     return sorted(p.name for p in root.iterdir() if p.is_dir() and DAY.match(p.name))
 
 
-def versions(root: Path, name: str) -> list[tuple[str, Path]]:
-    """Every stored version of `name`, oldest first, as (day, path)."""
-    return [(d, root / d / name) for d in days(root) if (root / d / name).is_file()]
+Nome = str | re.Pattern[str]  # a file name, or a pattern for one the ANS renames over time
+
+
+def _no_dia(root: Path, day: str, name: Nome) -> Path | None:
+    """The file `name` stored on `day`; for a pattern, the matching one (the greatest name if
+    several, which for dated names is the newest)."""
+    if isinstance(name, str):
+        path = root / day / name
+        return path if path.is_file() else None
+    nomes = sorted(p.name for p in (root / day).iterdir() if name.match(p.name))
+    return root / day / nomes[-1] if nomes else None
+
+
+def versions(root: Path, name: Nome) -> list[tuple[str, Path]]:
+    """Every stored version of `name`, oldest first, as (day, path). With a pattern, the versions
+    run across renames (HC_2026.csv then HC_2027.csv), so a renamed file is the next version."""
+    return [(d, p) for d in days(root) if (p := _no_dia(root, d, name))]
 
 
 def falhas(root: Path) -> list[dict]:
@@ -51,7 +65,7 @@ def estado(root: Path, name: str) -> list[str] | None:
     return None
 
 
-def latest(root: Path, name: str) -> Path | None:
+def latest(root: Path, name: Nome) -> Path | None:
     found = versions(root, name)
     return found[-1][1] if found else None
 
@@ -69,7 +83,7 @@ def collected_at(root: Path, day: str, name: str) -> datetime | None:
 
 
 def first_seen(
-    root: Path, name: str, keys: Callable[[Path], Iterable[str]]
+    root: Path, name: Nome, keys: Callable[[Path], Iterable[str]]
 ) -> dict[str, tuple[str, datetime | None]]:
     """For each key that appeared after the first stored version of `name`: (day, collection time).
 
@@ -81,7 +95,7 @@ def first_seen(
     for i, (day, path) in enumerate(versions(root, name)):
         current = set(keys(path))
         if i:
-            when = collected_at(root, day, name)
+            when = collected_at(root, day, path.name)
             for key in sorted(current - seen):
                 out[key] = (day, when)
         seen |= current

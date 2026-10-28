@@ -31,7 +31,6 @@ manter_anterior() {
 }
 
 # nome<TAB>url<TAB>guardar (sim: copia para o snapshot; não: só registra Last-Modified e sha256)
-ano=$(TZ=America/Sao_Paulo date +%Y)
 fontes=$(cat <<EOF
 Relatorio_cadop.csv	$ftp/operadoras_de_plano_de_saude_ativas/Relatorio_cadop.csv	sim
 Relatorio_cadop_canceladas.csv	$ftp/operadoras_de_plano_de_saude_canceladas/Relatorio_cadop_canceladas.csv	sim
@@ -40,8 +39,6 @@ pda-048-taxa_de_resolutividade.csv	$ftp/taxa_de_resolutividade/pda-048-taxa_de_r
 pda-040-regimes_especiais_direcao_tecnica.csv	$ftp/regimes_especiais_direcao_tecnica/pda-040-regimes_especiais_direcao_tecnica.csv	sim
 pda-056-classificacao_prudencial.csv	$ftp/classificacao_prudencial-056/pda-056-classificacao_prudencial.csv	sim
 monit_garantia_atendimento.csv	$ftp/monitoramento_garantia_atendimento/monit_garantia_atendimento.csv	sim
-HC_$ano.csv	$ftp/hc_ressarcimento_sus/HC_$ano.csv	sim
-pda-020-historico-idss-2016_2025.csv	$ftp/historico_idss-020/pda-020-historico-idss-2016_2025.csv	sim
 penalidades_aplicadas_a_operadoras.csv	$ftp/penalidades_aplicadas_a_operadoras/penalidades_aplicadas_a_operadoras.csv	não
 portabilidade-especial.html	$govbr/assuntos/contratacao-e-troca-de-plano/operadoras-em-fase-de-portabilidade-especial-e-portabilidade-extraordinaria	sim
 EOF
@@ -60,18 +57,28 @@ else
   falhou "listas RN 623" "página fora do ar"
 fi
 
-# Índice de ressarcimento ao SUS: um arquivo por mês (AAAAMM_...), só o mais recente.
-ress=$ftp/ressarcimento_ao_SUS_indice_efetivo_pagamento
-if curl -sS --fail --max-time 120 -A "$ua" -o "$tmp/ress.html" "$ress/"; then
-  arq=$(sed -n 's/.*href="\([0-9]\{6\}_Indice_de_Efetivo_Pagamento\.csv\)".*/\1/p' "$tmp/ress.html" | sort | tail -1)
-  if [ -n "$arq" ]; then
-    fontes+=$'\n'"$arq"$'\t'"$ress/$arq"$'\t'sim
-  else
-    falhou "índice de ressarcimento" "nenhum arquivo no diretório"
+# Arquivos cujo nome muda com o tempo: pegos no diretório, o mais recente em ordem de nome.
+#   mais_recente <url do diretório> <padrão ERE do nome> <rótulo para FALHAS.tsv>
+mais_recente() {
+  local dir=$1 padrao=$2 rotulo=$3 arq
+  if ! curl -sS --fail --max-time 120 -A "$ua" -o "$tmp/dir.html" "$dir/"; then
+    falhou "$rotulo" "diretório fora do ar"
+    return
   fi
-else
-  falhou "índice de ressarcimento" "diretório fora do ar"
-fi
+  arq=$(sed -nE "s/.*href=\"($padrao)\".*/\1/p" "$tmp/dir.html" | sort | tail -1)
+  if [ -z "$arq" ]; then
+    falhou "$rotulo" "nenhum arquivo no diretório"
+    return
+  fi
+  fontes+=$'\n'"$arq"$'\t'"$dir/$arq"$'\t'sim
+}
+# o índice de ressarcimento sai todo mês (AAAAMM_...)
+mais_recente "$ftp/ressarcimento_ao_SUS_indice_efetivo_pagamento" \
+  '[0-9]{6}_Indice_de_Efetivo_Pagamento\.csv' "índice de ressarcimento"
+# um HC por ano: em janeiro o do ano novo ainda não existe, e o do ano anterior segue sendo o coletado
+mais_recente "$ftp/hc_ressarcimento_sus" 'HC_[0-9]{4}\.csv' "HC do ressarcimento"
+# o nome do IDSS traz a faixa de anos e cresce um ano por vez (…2016_2025.csv, …2016_2026.csv)
+mais_recente "$ftp/historico_idss-020" 'pda-020-historico-idss-[0-9]{4}_[0-9]{4}\.csv' "histórico do IDSS"
 
 touch "$estado"
 novo_estado=$tmp/estado.tsv
