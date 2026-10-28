@@ -28,10 +28,10 @@ Os campos do índice, mais:
 | `reclamacoes` | lista, uma por cobertura (`médico-hospitalar`, `odontológica`) |
 | `reclamacoes[].indice` | reclamações (NIP) por mês para cada 100 mil beneficiários no `trimestre`, pela fórmula da RN 623: (reclamações do trimestre ÷ 3) ÷ média de beneficiários × 100.000 |
 | `reclamacoes[].reclamacoes`, `beneficiarios_media` | a base do índice (com poucas reclamações, o índice oscila muito) |
-| `reclamacoes[].porte`, `mediana_mesmo_porte`, `operadoras_mesmo_porte` | a comparação: mediana do índice entre as operadoras do mesmo porte (Pequeno, Médio, Grande) e cobertura, no mesmo trimestre |
+| `reclamacoes[].porte`, `mediana_mesmo_porte`, `operadoras_mesmo_porte` | a comparação: mediana do índice entre as operadoras do mesmo porte e cobertura, no mesmo trimestre. O porte é o da ANS (`PORTE_OPERADORA` do IGR, pelos vínculos ativos no SIB): Pequeno abaixo de 20 mil, Médio de 20 mil a 100 mil, Grande acima de 100 mil (dicionário do IGR, versão 2023) |
 | `reclamacoes[].serie` | até 8 trimestres: `{trimestre, indice, reclamacoes}` |
 | `idss` | Índice de Desempenho da Saúde Suplementar (0 a 1, maior é melhor) do último ano publicado: `valor`, `ano`, `ano_base`, as 4 `dimensoes` e a `mediana_mesma_modalidade`; com `valor` `null`, o `motivo` |
-| `ressarcimento` | ressarcimento ao SUS (quando um cliente da operadora é atendido no SUS, a operadora deve pagar): `indice_pagamento` é o % do valor cobrado que foi pago, acumulado e nos últimos 5 anos, na `competencia` |
+| `ressarcimento` | ressarcimento ao SUS (quando um cliente da operadora é atendido no SUS, a operadora deve pagar): `indice_pagamento` é o índice de efetivo pagamento da ANS, acumulado e nos últimos 5 anos, na `competencia`, que é (pago + parcelado) ÷ cobrado; `valor_cobrado`, `valor_pago` e `valor_parcelado` são a base, acumulada. A base não separa valor em discussão administrativa ou judicial: o que não foi pago nem parcelado pode estar contestado |
 | `portabilidade_vigente` | lista de `{ro, data, link}` quando os clientes podem trocar de plano sem cumprir carência de novo |
 | `eventos` | cancelamento, registro, direção técnica e portabilidade: `{tipo, id, data, titulo}`, do mais recente ao mais antigo |
 | `fontes` | URL de cada conjunto de dados usado |

@@ -208,6 +208,8 @@ def ressarcimento(root: Path) -> tuple[dict[str, dict], str | None]:
             "indice_pagamento_5anos": numero(r["INDICE_ADIMPLENCIA_5ANOS"]),
             "valor_cobrado": numero(r["VALOR_COBRADO_ACUMULADO"]),
             "valor_pago": numero(r["VALOR_PAGO_ACUMULADO"]),
+            # the ANS index counts this as paid: (pago + parcelado) / cobrado, checked on every row
+            "valor_parcelado": numero(r["VALOR_PARCELADO_ACUMULADO"]),
         }
     return out, nomes[-1]
 

@@ -80,6 +80,23 @@ def test_univida_in_liquidation(reais):
     assert any(e["tipo"] == "cancelamento" for e in u["eventos"])
 
 
+def test_sus_index_counts_the_parcelado_as_paid(reais):
+    # Abertta (314668), checked by hand in the 2026-09 file: pago 4.707.263,65 + parcelado
+    # 33.664,10 = cobrado 4.740.927,75, so the ANS index is 100% though not all of it was paid.
+    a = reais["314668"]["ressarcimento"]
+    assert a["valor_parcelado"] == 33664.10 and a["indice_pagamento"] == 100.0
+    assert a["valor_pago"] + a["valor_parcelado"] == pytest.approx(a["valor_cobrado"])
+    com_cobranca = [
+        o["ressarcimento"]
+        for o in reais.values()
+        if (o["ressarcimento"] or {}).get("valor_cobrado")
+    ]
+    assert len(com_cobranca) >= 700  # 733 on the 2026-09 file
+    for r in com_cobranca:
+        esperado = (r["valor_pago"] + r["valor_parcelado"]) / r["valor_cobrado"] * 100
+        assert r["indice_pagamento"] == pytest.approx(esperado, abs=0.01)
+
+
 def test_index_matches_records(reais):
     idx = operadoras.indice(list(reais.values()))
     assert len(idx) == len(reais)
