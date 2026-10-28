@@ -11,12 +11,13 @@ import html
 import json
 import re
 import shutil
+from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from . import eventos as ev
-from . import operadoras, portabilidade, snapshots
+from . import feed_operadora, operadoras, portabilidade, snapshots
 from .atom import Entry, atom_feed, tag_uri
 from .eventos import Evento
 
@@ -173,7 +174,7 @@ FEED_XSL = f"""<?xml version="1.0" encoding="utf-8"?>
 <style>{CSS}</style></head>
 <body>
 <header class="site"><div class="wrap">
-<a class="name" href="index.html">{SITE_NAME}</a></div></header>
+<a class="name" href="/">{SITE_NAME}</a></div></header>
 <main class="wrap">
 <h1><xsl:value-of select="atom:feed/atom:title"/></h1>
 <div class="box"><strong>Isto é um feed Atom.</strong> Para receber os novos eventos, copie o
@@ -196,36 +197,38 @@ A versão para ler no navegador está na
 """
 
 
+def event_entry(e: Evento, *, base_tag: str, link: str) -> Entry:
+    return Entry(
+        id=tag_uri(base_tag, e.tipo, *e.chave.split("/")),
+        title=f"{br_date(e.data)}: {e.titulo}",
+        updated=e.updated.isoformat(),
+        published=f"{e.data.isoformat()}T00:00:00-03:00",
+        link=link,
+        content=f"<div>{event_html(e)}</div>",
+    )
+
+
 def feed_bytes(
-    items: list[Evento],
+    entries: list[Entry],
     *,
-    nome: str,
+    feed_id: str,
     titulo: str,
     subtitulo: str,
+    self_url: str,
     alt: str,
-    base_url: str,
-    base_tag: str,
+    xsl_href: str = "feed.xsl",
 ) -> bytes:
-    entries = [
-        Entry(
-            id=tag_uri(base_tag, e.tipo, *e.chave.split("/")),
-            title=f"{br_date(e.data)}: {e.titulo}",
-            updated=e.updated.isoformat(),
-            published=f"{e.data.isoformat()}T00:00:00-03:00",
-            link=f"{base_url}/{e.tipo}.html#{anchor(e)}",
-            content=f"<div>{event_html(e)}</div>",
-        )
-        for e in items
-    ]
-    updated = max((x.updated for x in entries), default="2026-10-22T00:00:00-03:00")
+    # compared as instants: collection times are in UTC, act dates in Brasília time
+    latest = max(entries, key=lambda x: datetime.fromisoformat(x.updated), default=None)
     return atom_feed(
-        feed_id=tag_uri(base_tag, nome),
+        feed_id=feed_id,
         title=titulo,
         subtitle=subtitulo,
-        self_url=f"{base_url}/{nome}.xml",
+        self_url=self_url,
         alt_url=alt,
-        updated=updated,
+        updated=latest.updated if latest else "2026-10-22T00:00:00-03:00",
         entries=entries,
+        xsl_href=xsl_href,
     )
 
 
@@ -243,6 +246,7 @@ def build_site(
     *,
     base_url: str,
     base_tag: str,
+    portal_url: str,
     notice: str | None = None,
 ) -> dict:
     por_tipo: dict[str, list[Evento]] = {
@@ -264,6 +268,9 @@ def build_site(
         (site / name).parent.mkdir(parents=True, exist_ok=True)
         (site / name).write_bytes(data.encode("utf-8") if isinstance(data, str) else data)
 
+    def type_entry(e: Evento) -> Entry:
+        return event_entry(e, base_tag=base_tag, link=f"{base_url}/{e.tipo}.html#{anchor(e)}")
+
     stale = ""
     if atualizado:
         idade = (date.fromisoformat(stamp_day) - atualizado.date()).days
@@ -279,13 +286,12 @@ def build_site(
         write(
             f"{tipo}.xml",
             feed_bytes(
-                items[:TIPO_LIMIT],
-                nome=tipo,
+                [type_entry(e) for e in items[:TIPO_LIMIT]],
+                feed_id=tag_uri(base_tag, tipo),
                 titulo=f"ANS: {nome}",
                 subtitulo=desc,
+                self_url=f"{base_url}/{tipo}.xml",
                 alt=f"{base_url}/{tipo}.html",
-                base_url=base_url,
-                base_tag=base_tag,
             ),
         )
         body = (
@@ -311,13 +317,12 @@ def build_site(
     write(
         "geral.xml",
         feed_bytes(
-            geral,
-            nome="geral",
+            [type_entry(e) for e in geral],
+            feed_id=tag_uri(base_tag, "geral"),
             titulo=f"ANS: {SITE_NAME.lower()}",
             subtitulo="Cancelamentos, novos registros, direção técnica e portabilidade especial.",
+            self_url=f"{base_url}/geral.xml",
             alt=f"{base_url}/index.html",
-            base_url=base_url,
-            base_tag=base_tag,
         ),
     )
     feeds = "".join(
@@ -387,9 +392,42 @@ def build_site(
 
     # Data for the public portal: a search index and one record per operator (contract in
     # dados/schema.md).
-    registros = operadoras.operadoras(
-        snapshots_dir, [e for items in por_tipo.values() for e in items]
-    )
+    todos = [e for items in por_tipo.values() for e in items]
+    registros = operadoras.operadoras(snapshots_dir, todos)
+
+    # One feed per operator, linked from its portal page; left out of the OPML and the sitemap
+    # (about 1,340 of them). Entries link to the portal's short /plano/<registro>/ address, which
+    # redirects to the full page, so this build does not need the portal's slugs.
+    por_reg: dict[str, list[Evento]] = defaultdict(list)
+    for e in todos:
+        if e.registro:
+            por_reg[e.registro].append(e)
+    trimestres, anos = feed_operadora.vistos(snapshots_dir)
+    for o in registros:
+        reg = o["registro"]
+        o["feed"] = f"{base_url}/operadora/{reg}.xml"
+        link = f"{portal_url}/plano/{reg}/"
+        entries = feed_operadora.entradas(
+            o,
+            [(e.data, event_entry(e, base_tag=base_tag, link=link)) for e in por_reg[reg]],
+            trimestres=trimestres,
+            anos=anos,
+            base_tag=base_tag,
+            link=link,
+        )
+        write(
+            f"operadora/{reg}.xml",
+            feed_bytes(
+                entries,
+                feed_id=tag_uri(base_tag, "operadora", reg),
+                titulo=f"{o['nome']}: avisos da ANS",
+                subtitulo=f"Operadora de registro {reg} na ANS: cancelamento, direção técnica,"
+                " portabilidade especial, reclamações de cada trimestre e nota anual da ANS.",
+                self_url=o["feed"],
+                alt=link,
+                xsl_href="../feed.xsl",
+            ),
+        )
     write("dados/operadoras.json", compact(operadoras.indice(registros)))
     for o in registros:
         write(f"dados/operadora/{o['registro']}.json", compact(o))

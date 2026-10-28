@@ -6,6 +6,8 @@ from pathlib import Path
 BASE_URL = "https://ans.feeds.abelhaninja.de"
 # Fixed forever: feed readers show every entry again when ids change.
 BASE_TAG = "ans.feeds.abelhaninja.de,2026:feeds"
+# Operator feeds link to the portal's /plano/<registro>/ address, which must keep working.
+PORTAL_URL = "https://saude.abelhaninja.de"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -16,6 +18,7 @@ def main(argv: list[str] | None = None) -> None:
     build.add_argument("--site", type=Path, default=Path("site"))
     build.add_argument("--base-url", default=BASE_URL)
     build.add_argument("--base-tag", default=BASE_TAG)
+    build.add_argument("--portal-url", default=PORTAL_URL)
     build.add_argument("--notice", default=None, help="warning shown on every page")
     args = parser.parse_args(argv)
 
@@ -27,6 +30,7 @@ def main(argv: list[str] | None = None) -> None:
             args.site,
             base_url=args.base_url.rstrip("/"),
             base_tag=args.base_tag,
+            portal_url=args.portal_url.rstrip("/"),
             notice=args.notice,
         )
         print(f"{args.site}: {meta['eventos']} eventos, dados de {meta['date']}")

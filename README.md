@@ -10,6 +10,7 @@ Suplementar), published as static Atom feeds at <https://ans.feeds.abelhaninja.d
 | `registro.xml` | new ANS registrations |
 | `direcao-tecnica.xml` | Resoluções Operacionais that put an operator under technical direction |
 | `portabilidade.xml` | special and extraordinary portability (beneficiaries may switch plans without new waiting periods) |
+| `operadora/<registro>.xml` | one per operator: its events, plus each new complaint quarter and ANS score (IDSS) year; linked from the operator's page on the portal |
 
 Fiscal direction and extrajudicial liquidation have no source that can be collected automatically
 (the Diário Oficial and the old ANS site disallow robots); cancellations by liquidation are

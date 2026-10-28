@@ -59,6 +59,12 @@ def _ordem_tri(t: str) -> tuple[int, int]:
     return int(t[2:]), int(t[0])
 
 
+def trimestres_fechados(competencias: set[str]) -> list[str]:
+    """Quarters with all three months in the file, oldest first."""
+    tris = sorted({trimestre(c) for c in competencias if c}, key=_ordem_tri)
+    return [t for t in tris if sum(trimestre(c) == t for c in competencias if c) == 3]
+
+
 def mediana(valores: list[float]) -> float | None:
     return round(statistics.median(valores), 2) if valores else None
 
@@ -86,8 +92,7 @@ def reclamacoes(root: Path) -> tuple[dict[str, list[dict]], dict[str, int]]:
                     r["PORTE_OPERADORA"],
                 )
             )
-    fechados = sorted({trimestre(c) for c in competencias}, key=_ordem_tri)
-    fechados = [t for t in fechados if sum(trimestre(c) == t for c in competencias) == 3]
+    fechados = trimestres_fechados(competencias)
     serie_tris = fechados[-SERIE_TRIMESTRES:]
     ultimo = fechados[-1] if fechados else None
 

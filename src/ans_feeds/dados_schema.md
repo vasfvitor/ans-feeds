@@ -35,6 +35,7 @@ Os campos do índice, mais:
 | `portabilidade_vigente` | lista de `{ro, data, link}` quando os clientes podem trocar de plano sem cumprir carência de novo |
 | `eventos` | cancelamento, registro, direção técnica e portabilidade: `{tipo, id, data, titulo}`, do mais recente ao mais antigo |
 | `fontes` | URL de cada conjunto de dados usado |
+| `feed` | URL do feed Atom da operadora (`/operadora/<registro>.xml`): os eventos, uma entrada por trimestre de reclamações e uma por ano do IDSS; as entradas apontam para `https://saude.abelhaninja.de/plano/<registro>/` |
 | `fora` | indicadores que existem mas a ANS parou de atualizar |
 
 ## `todas.json`
