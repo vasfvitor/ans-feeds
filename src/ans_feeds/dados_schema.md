@@ -17,6 +17,7 @@ fonte de cada número: nenhuma nota ou rótulo próprio. Datas em ISO (`AAAA-MM-
 | `situacao` | `ativa` ou `cancelada` |
 | `beneficiarios` | total no último mês do IGR (todas as coberturas), ou `null` |
 | `beneficiarios_em` | o mês desse total (`AAAA-MM`), ou `null` com ele |
+| `beneficiarios_ano_antes` | o mesmo total 12 meses antes de `beneficiarios_em`, ou `null` sem linha no IGR naquele mês; com os dois, dá para ver quantos clientes a operadora perdeu ou ganhou no ano |
 
 ## `operadora/<registro>.json`
 

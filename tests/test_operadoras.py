@@ -34,7 +34,7 @@ def test_quarterly_index_and_peer_median(tree):
         ]
     linhas.append(igr_row("000004", 1, 1000, "2026-09"))  # one month only: no quarter
     write_day(tree, "2026-10-22", {operadoras.IGR: "".join(linhas)})
-    recl, benef, _ = operadoras.reclamacoes(tree)
+    recl, benef, _, _ = operadoras.reclamacoes(tree)
     (r,) = recl["000003"]
     assert r["trimestre"] == "3T2026" and r["indice"] == 30.0 and r["reclamacoes"] == 90
     assert r["mediana_mesmo_porte"] == 6.0 and r["operadoras_mesmo_porte"] == 3
@@ -143,3 +143,19 @@ def test_official_lists_are_found_by_quarter(tree):
         "3T2025": ["https://x.invalid/od.pdf"],
         "4T2025": ["https://x.invalid/4t.pdf"],
     }
+
+
+def test_clients_a_year_before_the_latest_month(tree):
+    linhas = [IGR_HEAD]
+    for mes, n in (("2025-08", 999), ("2025-09", 1000), ("2026-08", 900), ("2026-09", 700)):
+        linhas.append(igr_row("000001", 0, n, mes))
+    linhas.append(igr_row("000002", 0, 50, "2026-09"))  # no row a year before
+    write_day(tree, "2026-10-22", {operadoras.IGR: "".join(linhas)})
+    r = operadoras.reclamacoes(tree)
+    assert r.competencia == "2026-09"
+    assert r.beneficiarios["000001"] == 700 and r.beneficiarios_ano_antes["000001"] == 1000
+    assert "000002" not in r.beneficiarios_ano_antes
+    assert (
+        operadoras.mes_antes("2026-01", 12) == "2025-01"
+        and operadoras.mes_antes("2026-01", 1) == "2025-12"
+    )

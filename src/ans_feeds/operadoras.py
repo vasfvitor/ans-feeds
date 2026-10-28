@@ -14,6 +14,7 @@ import statistics
 from collections import defaultdict
 from datetime import date, timedelta
 from pathlib import Path
+from typing import NamedTuple
 
 from . import eventos as ev
 from . import snapshots
@@ -78,13 +79,28 @@ def mediana(valores: list[float]) -> float | None:
     return round(statistics.median(valores), 2) if valores else None
 
 
-def reclamacoes(root: Path) -> tuple[dict[str, list[dict]], dict[str, int], str | None]:
+class Reclamacoes(NamedTuple):
+    por_operadora: dict[str, list[dict]]
+    beneficiarios: dict[str, int]  # all coverages, in `competencia`
+    competencia: str | None  # the latest month in the IGR
+    # all coverages, 12 months before `competencia`: the portal reads a loss of clients from it
+    beneficiarios_ano_antes: dict[str, int]
+
+
+def mes_antes(competencia: str, meses: int) -> str:
+    """ "2026-09", 12 → "2025-09"."""
+    ano, mes = map(int, competencia.split("-"))
+    n = ano * 12 + mes - 1 - meses
+    return f"{n // 12}-{n % 12 + 1:02d}"
+
+
+def reclamacoes(root: Path) -> Reclamacoes:
     """Quarterly complaint index (RN 623 formula: complaints per month per 100,000 beneficiaries),
     per operator and coverage, with the median of operators of the same size and coverage in the
-    latest closed quarter. Also returns the beneficiaries in the latest month, and that month."""
+    latest closed quarter. Also the beneficiaries in the latest month and 12 months before it."""
     path = snapshots.latest(root, IGR)
     if not path:
-        return {}, {}, None
+        return Reclamacoes({}, {}, None, {})
     meses: dict[tuple[str, str, str], list[tuple[str, int, int, str]]] = defaultdict(list)
     competencias: set[str] = set()
     with path.open(encoding="utf-8", newline="") as f:
@@ -150,12 +166,16 @@ def reclamacoes(root: Path) -> tuple[dict[str, list[dict]], dict[str, int], str 
             }
         )
     ultima_comp = max(competencias) if competencias else None
+    ano_antes = mes_antes(ultima_comp, 12) if ultima_comp else None
     beneficiarios: dict[str, int] = defaultdict(int)
+    antes: dict[str, int] = defaultdict(int)
     for (reg, _, _tri), lst in meses.items():
         for comp, _, b, _ in lst:
             if comp == ultima_comp:
                 beneficiarios[reg] += b
-    return dict(out), dict(beneficiarios), ultima_comp
+            elif comp == ano_antes:
+                antes[reg] += b
+    return Reclamacoes(dict(out), dict(beneficiarios), ultima_comp, dict(antes))
 
 
 def listas_rn623(root: Path) -> dict[str, list[str]]:
@@ -269,7 +289,7 @@ def operadoras(root: Path, todos: list[Evento]) -> list[dict]:
     """Active operators plus those cancelled in the last five years."""
     hoje = date.fromisoformat(snapshots.days(root)[-1])
     limite = hoje - timedelta(days=365 * CANCELADAS_ANOS)
-    recl, beneficiarios, competencia = reclamacoes(root)
+    recl, beneficiarios, competencia, ano_antes = reclamacoes(root)
     listas = listas_rn623(root)
     notas, _ = idss(root)
     ress, ress_arquivo = ressarcimento(root)
@@ -318,6 +338,7 @@ def operadoras(root: Path, todos: list[Evento]) -> list[dict]:
                     "cancelamento": cancelamento,
                     "beneficiarios": beneficiarios.get(reg),
                     "beneficiarios_em": competencia if reg in beneficiarios else None,
+                    "beneficiarios_ano_antes": ano_antes.get(reg),
                     "reclamacoes": recl.get(reg, []),
                     "meta_rn623": meta_rn623(recl.get(reg, []), listas),
                     "idss": notas.get(reg),
