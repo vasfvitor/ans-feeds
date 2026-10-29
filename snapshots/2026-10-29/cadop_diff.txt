@@ -1,0 +1,10 @@
+### Relatorio_cadop.csv (snapshots/2026-10-28 → snapshots/2026-10-29): 1106 → 1105; entraram 0, saíram 1, alterados 4
+  - 423131 UNIÃO SAUDE ADMINISTRADORA DE PLANOS DE SAUDE LTDA
+  campos alterados: {'DDD': 2, 'TELEFONE': 2, 'ENDERECO_ELETRONICO': 2, 'REGIAO_DE_COMERCIALIZACAO': 1}
+  ~ 315265 {'DDD': ('44', ''), 'TELEFONE': ('32181546', '')}
+  ~ 354511 {'ENDERECO_ELETRONICO': ('diretoria@silvestresaude.com.br', 'moises.santiago@adventistas.org.br')}
+  ~ 422860 {'ENDERECO_ELETRONICO': ('leonardo@unimedicasaude.com', 'salutyadm@gmail.com')}
+  ~ 424714 {'DDD': ('21', ''), 'TELEFONE': ('984630886', ''), 'REGIAO_DE_COMERCIALIZACAO': ('', '4')}
+### Relatorio_cadop_canceladas.csv (snapshots/2026-10-22 → snapshots/2026-10-29): 3078 → 3079; entraram 1, saíram 0, alterados 0
+  + 423131 UNIÃO SAUDE ADMINISTRADORA DE PLANOS DE SAUDE LTDA 2026-10-28 Pedido de cancelamento
+  campos alterados: {}
