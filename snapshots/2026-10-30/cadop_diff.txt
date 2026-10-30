@@ -1,0 +1,5 @@
+### Relatorio_cadop.csv (snapshots/2026-10-29 → snapshots/2026-10-30): 1105 → 1105; entraram 0, saíram 0, alterados 2
+  campos alterados: {'RAZAO_SOCIAL': 2, 'LOGRADOURO': 1, 'NUMERO': 1, 'COMPLEMENTO': 1, 'BAIRRO': 1, 'CIDADE': 1, 'UF': 1, 'CEP': 1}
+  ~ 417998 {'RAZAO_SOCIAL': ('INTERBRASIL ADMINISTRADORA DE BENEFICIOS  DE SAUDE LTDA', 'INTERBRASIL ADMINISTRADORA DE PLANOS DE SAÚDE E BENEFÍCIOS LTDA'), 'LOGRADOURO': ('Avenida dos Autonomistas ', 'Avenida Santos Dumont'), 'NUMERO': ('896', '2626'), 'COMPLEMENTO': ('Anexo 900, Torre Santorini, Conj 1211', 'Sala 1311'), 'BAIRRO': ('VILA YARA', 'Aldeota'), 'CIDADE': ('Osasco', 'Fortaleza'), 'UF': ('SP', 'CE'), 'CEP': ('06020012', '60150162')}
+  ~ 425061 {'RAZAO_SOCIAL': ('SAUDE UNIMED - OPERADORA DE PLANO DE SAUDE LTDA', 'SAUDE UNIMED - OPERADORA DE PLANOS DE SAUDE LTDA')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-10-30
