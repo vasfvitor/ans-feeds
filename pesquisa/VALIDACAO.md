@@ -185,9 +185,19 @@ maio a abril.
 - **O reajuste em si.** No ciclo 2025, a mediana do `PCT_UNICO` é 9,91% e a média ponderada por
   `QT_BENEF` é 14,01%, sobre 8,1 milhões de beneficiários. 129 linhas têm `0,00`, e há reajustes
   negativos (−8,19%). Os extremos (333%, 267%) são grupos de 1 a 4 contratos.
-- **Anomalia a conferir:** `354511` (Unieste) teve 90,35% no ciclo 2025, com `QT_BENEF` de 19.227. No
-  ciclo anterior eram 1.486, então o número subiu 13 vezes. Os 671 contratos dão 28,6 vidas por
-  contrato, quase o teto de 29. Pode ser carga errada ou crescimento real; não tirei conclusão.
+- **`QT_BENEF` errado na `354511` (Unieste), ciclo 2025** (conferido em 03/11/2026 no mesmo arquivo, ainda
+  com `Last-Modified` de 11/06/2026). O arquivo dá 19.227 vidas em 671 contratos, com reajuste de 90,35%.
+  O número não pode estar certo: a operadora inteira, somando todos os planos, tinha 10.743 clientes em
+  setembro de 2025 e 9.241 em setembro de 2026 (`beneficiarios_ano_antes` e `beneficiarios` do `dados/`
+  deste repo), e o agrupamento é só uma parte dela. A série também destoa: de 2013 a 2024 a Unieste teve
+  de 2,8 a 3,3 vidas por contrato (1.486 em 531 contratos em 2024); em 2025 são 28,65, enquanto a mediana
+  das 406 operadoras do ciclo é 3,96 e o percentil 99 é 14. `QT_CONTRATOS` (+26%) é plausível. Se o
+  PDA-055 for publicado, o `QT_BENEF` dessa linha não serve como peso, e o percentual fica sem
+  confirmação.
+- Duas outras operadoras do ciclo 2025 passam de 29 vidas por contrato sem passar do próprio total de
+  clientes: `420000` (PLANSUL, 49 vidas por contrato; 45 e 55 nos dois ciclos anteriores) e `323080` (GEAP,
+  219,6, em 17 contratos). Por serem estáveis no tempo, parecem uma regra de agrupamento própria da
+  operadora e não um erro de carga; não conferi na RN.
 - `RAZAO_SOCIAL` vem como `"registro - nome"`: para exibir, cortar o prefixo (presente em 100% das
   linhas).
 
