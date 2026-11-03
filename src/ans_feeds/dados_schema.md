@@ -4,6 +4,13 @@ Gerados a cada build a partir dos snapshots dos dados abertos da ANS. São só f
 fonte de cada número: nenhuma nota ou rótulo próprio. Datas em ISO (`AAAA-MM-DD`); número ausente é
 `null`.
 
+## Versão do contrato
+
+O `meta.json` da raiz e o `todas.json` trazem `schema_version`, hoje `1`, como o manifest do anvisa-api.
+Ela só muda quando quem lê precisa mudar para continuar lendo: um campo novo não muda a versão; um campo
+que sai, muda de nome ou de sentido muda. O `operadoras.json` é uma lista e não traz a chave; vale a do
+`meta.json`. Os arquivos de antes de novembro de 2026 não têm a chave.
+
 ## `operadoras.json`
 
 Índice para busca: uma lista com as operadoras ativas e as canceladas nos últimos 5 anos.

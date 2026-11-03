@@ -7,7 +7,7 @@ import pytest
 from conftest import SNAPSHOTS
 
 from ans_feeds.cli import BASE_TAG, BASE_URL, PORTAL_URL
-from ans_feeds.site import TIPOS, build_site
+from ans_feeds.site import SCHEMA_VERSION, TIPOS, build_site
 
 A = "{http://www.w3.org/2005/Atom}"
 OPTS = {"portal_url": PORTAL_URL, "notice": "Coleta falhou."}
@@ -77,6 +77,7 @@ def test_todas_holds_the_same_operators_as_the_files(site):
     todas = json.loads((dados / "todas.json").read_text(encoding="utf-8"))
     meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
     assert todas["date"] == meta["date"]
+    assert todas["schema_version"] == meta["schema_version"] == SCHEMA_VERSION
     assert [o["registro"] for o in todas["operadoras"]] == [o["registro"] for o in idx]
     for o in todas["operadoras"]:
         arquivo = dados / "operadora" / f"{o['registro']}.json"

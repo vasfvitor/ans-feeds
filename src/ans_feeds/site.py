@@ -28,6 +28,10 @@ REPO_URL = "https://github.com/vasfvitor/ans-feeds"
 GERAL_LIMIT = 100  # general feed; type pages show as many, so every general entry has an anchor
 TIPO_LIMIT = 50  # per-type feeds
 INDEX_LIMIT = 20
+# the contract version of meta.json and dados/todas.json, as in the anvisa-api manifest: a new key
+# keeps it, a key removed, renamed or redefined raises it (dados_schema.md); the portal refuses one
+# it does not know. operadoras.json is a bare list and carries none: meta.json speaks for the set
+SCHEMA_VERSION = 1
 STALE_DAYS = 90  # portability page older than this gets a warning
 
 TIPOS = {
@@ -466,13 +470,15 @@ def build_site(
     for o in registros:
         write(f"dados/operadora/{o['registro']}.json", compact(o))
     # every operator in one file: the portal build reads this instead of ~1,340 requests
-    write("dados/todas.json", compact({"date": stamp_day, "operadoras": registros}))
+    todas = {"schema_version": SCHEMA_VERSION, "date": stamp_day, "operadoras": registros}
+    write("dados/todas.json", compact(todas))
     write("dados/schema.md", operadoras.SCHEMA.read_text(encoding="utf-8"))
     # the same records as tables for people who redistribute (Procon, press): no ranking
     for nome, texto in tabelas(registros, date.fromisoformat(stamp_day)).items():
         write(f"dados/tabelas/{nome}", texto)
 
     meta = {
+        "schema_version": SCHEMA_VERSION,
         "date": stamp_day,
         "eventos": len(geral),
         "tipos": {t: len(items) for t, items in por_tipo.items()},
