@@ -24,6 +24,10 @@ technical direction, special portability) from the committed snapshots. The rese
 - LGPD: no NIP row (`pda-013`) goes into the repo; only per-operator aggregates, and at this stage not
   even those.
 - No file above 100 MB in git (GitHub rejects it).
+- `RUNBOOK.md` (Portuguese, for the user, not for an agent) explains every way a workflow here turns
+  red. Adding or changing an alarm (`::error::`, `::warning::`, a `FALHA:` reason, an `exit 1` or a raise
+  that ends a workflow) or an error message means updating its entry in the same commit, quoting the
+  message exactly as the log prints it.
 
 ## Layout
 

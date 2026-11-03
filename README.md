@@ -33,6 +33,8 @@ instead.
   score of our own.
 - The research behind the choices (formats, keys, what is stale at the source) is in
   `pesquisa/VALIDACAO.md`, in Portuguese.
+- When a run turns red, [RUNBOOK.md](RUNBOOK.md) (in Portuguese) says what the message means, whether
+  the site was affected and what to do.
 
 ## Personal data
 
