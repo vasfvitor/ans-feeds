@@ -13,14 +13,15 @@ Quem cria ou muda um alarme ou uma mensagem de erro atualiza este arquivo no mes
 
 | Workflow / job | Trecho da mensagem | Entrada |
 |---|---|---|
-| feeds / snapshot | `FALHA:`, `HTTP`, `fora do ar`, `nenhum` | [Fonte da ANS falhou](#fonte-da-ans-falhou) |
+| feeds / snapshot | issue "Fonte da ANS falhou", `FALHA:`, `HTTP`, `fora do ar`, `nenhum` | [Fonte da ANS falhou](#fonte-da-ans-falhou) |
+| feeds / snapshot | `stopped halfway` | [Coleta parou no meio](#coleta-parou-no-meio) |
 | feeds / snapshot | `bytes contra`, `na versão anterior` | [Arquivo da ANS encolheu](#arquivo-da-ans-encolheu) |
 | feeds / snapshot | `Traceback` em "CADOP diff" | [Diff do CADOP quebrou](#diff-do-cadop-quebrou) |
 | feeds / snapshot | `git push`, `CONFLICT` | [Commit do snapshot falhou](#commit-do-snapshot-falhou) |
 | feeds / build | `changed layout`, `portabilidade.ler needs a fix` | [Página de portabilidade mudou](#página-de-portabilidade-mudou) |
 | feeds / build | `Traceback`, `KeyError`, `UnicodeDecodeError` | [Um arquivo da ANS mudou de formato](#um-arquivo-da-ans-mudou-de-formato) |
-| feeds / deploy | `the CADOP has no Last-Modified or has not changed` | [CADOP parado na ANS](#cadop-parado-na-ans) |
-| feeds / deploy | `the portal could not be read or is more than 2 days behind` | [Portal atrasado](#portal-atrasado) |
+| feeds / deploy | issue "CADOP parado na ANS", `the CADOP has no Last-Modified` | [CADOP parado na ANS](#cadop-parado-na-ans) |
+| feeds / deploy | issue "Portal N dias atrás" ou "O build.json do portal não abriu" | [Portal atrasado](#portal-atrasado) |
 | ci | ruff, pytest, build | [Lint, formato ou testes](#lint-formato-ou-testes) |
 
 ## feeds
@@ -34,7 +35,11 @@ jobs:
 2. **build:** monta o site a partir dos snapshots. Roda mesmo quando o snapshot falhou.
 3. **deploy:** publica no Pages e, depois, confere a idade do CADOP e o atraso do portal.
 
-Uma fonte fora do ar não impede as outras: o que foi baixado é commitado e só então o job fica vermelho.
+Uma fonte fora do ar não impede as outras: o que foi baixado é commitado.
+
+Três causas de fora do código não deixam o run vermelho: abrem uma issue com o label `alerta`, que fecha
+sozinha quando a situação normaliza (ver o RUNBOOK do hub, "Issues de alerta"). São elas: uma fonte da
+ANS que falhou, o CADOP parado e o portal atrasado. O run fica verde, com um aviso amarelo.
 
 **Para rodar de novo:** Actions → feeds → "Run workflow" no `main`. Não use "Re-run jobs": ele parte do
 commit antigo e o `git pull --rebase` do snapshot do dia entra em conflito. Com `build_only` marcado, ele
@@ -42,9 +47,9 @@ só remonta o site, sem baixar nada.
 
 ### Fonte da ANS falhou
 
-- **Onde aparece:** job snapshot. No passo Snapshot, a linha `FALHA: <fonte> (<motivo>)`. O job só fica
-  vermelho no último passo, "Fail if a source failed (after committing the rest)", que não imprime
-  mensagem própria.
+- **Onde aparece:** a issue "Fonte da ANS falhou: N fontes com a versão anterior", aberta pelo job
+  snapshot (passo "Alarm issue for the sources that failed"). O run fica verde. No log do passo
+  Snapshot, a linha `FALHA: <fonte> (<motivo>)`.
 - **Motivos possíveis:**
   - `HTTP <código>`: `HTTP 000` quer dizer erro de rede ou tempo esgotado;
   - `página fora do ar` ou `nenhum PDF na página` (listas da RN 623);
@@ -54,16 +59,28 @@ só remonta o site, sem baixar nada.
 - **O site foi afetado?** Saiu com a versão anterior dessa fonte e o aviso "A coleta de hoje falhou em
   parte; estes dados são da última coleta bem-sucedida de cada fonte." O `meta.json` lista a fonte em
   `falhas`, e o portal mostra que esses números são da coleta anterior.
-- **Agir ou esperar:** esperar. O run do dia seguinte tenta de novo.
-- **Pedir ajuda quando:** a mesma fonte falhar por mais de uma semana, ou o motivo for `nenhum PDF na
+- **Agir ou esperar:** esperar. O run do dia seguinte tenta de novo, e a issue fecha sozinha no primeiro
+  dia sem falha.
+- **Pedir ajuda quando:** a issue ficar aberta por mais de uma semana, ou o motivo for `nenhum PDF na
   página` ou `nenhum arquivo no diretório` vários dias seguidos (a ANS pode ter mudado o endereço).
+
+### Coleta parou no meio
+
+- **Onde aparece:** job snapshot, passo "List the sources that failed". Fica vermelho.
+- **Mensagem:** `::error::snapshot.sh failed with no source in FALHAS.tsv for <dia>: it stopped halfway`
+- **O que quer dizer:** o `snapshot.sh` terminou com erro, mas sem registrar nenhuma fonte que falhou
+  naquele dia. Ele parou no meio por um erro inesperado, um problema no script.
+- **O site foi afetado?** O que foi baixado antes do erro pode ter sido commitado. O site sai com o aviso
+  de coleta com falha.
+- **Agir ou esperar:** pedir ajuda. O log do passo Snapshot mostra onde ele parou.
 
 ### Arquivo da ANS encolheu
 
-- **Onde aparece:** job snapshot, passo Snapshot.
+- **Onde aparece:** a issue "Fonte da ANS falhou", com o motivo abaixo. No log do passo Snapshot, a
+  mesma linha.
 - **Mensagem:** `FALHA: <fonte> (N bytes contra M na versão anterior)`
 - **O que quer dizer:** o arquivo novo tem menos da metade do tamanho do anterior. Pode ser um arquivo
-  cortado ou uma página de erro. O script guarda a versão anterior e o job fica vermelho.
+  cortado ou uma página de erro. O script guarda a versão anterior.
 - **O site foi afetado?** Não. Segue com a versão anterior.
 - **Agir ou esperar:** esperar um dia.
 - **Pedir ajuda quando:** repetir. Se a ANS diminuiu o arquivo de verdade, não há como liberar à mão: o
@@ -109,24 +126,28 @@ só remonta o site, sem baixar nada.
 
 ### CADOP parado na ANS
 
-- **Onde aparece:** job deploy, passo "Check the CADOP's age and the portal's lag", depois do deploy.
-- **Mensagem:** `::error::the CADOP has no Last-Modified or has not changed at the ANS for N days`
+- **Onde aparece:** a issue "CADOP parado na ANS há N dias", aberta pelo job deploy depois do deploy. O
+  run fica verde. No log do passo "Check the CADOP's age and the portal's lag":
+  `the CADOP has not changed at the ANS for N days`.
 - **O que quer dizer:** a ANS publica o CADOP todo dia, e ele não muda há mais de 7 dias.
 - **O site foi afetado?** Não quebrou. Mostra o último CADOP publicado, só que velho.
 - **Agir ou esperar:** esperar. A causa está na ANS (um feriado longo também pode causar isso).
-- **Pedir ajuda quando:** a ANS voltou a publicar e o alarme continua.
+- **Pedir ajuda quando:** a ANS voltou a publicar e a issue não fechou.
+- **Vermelho, com `::error::the CADOP has no Last-Modified`:** o build não achou a data do CADOP. Não é
+  atraso da ANS, é um problema no snapshot ou no build. Pedir ajuda.
 
 ### Portal atrasado
 
-- **Onde aparece:** o mesmo passo, depois do deploy.
-- **Mensagem:** `::error::the portal could not be read or is more than 2 days behind <data>`
+- **Onde aparece:** a issue "Portal N dias atrás dos dados da ANS" ou "O build.json do portal não
+  abriu", aberta pelo mesmo passo. O run fica verde. No log:
+  `the portal could not be read or is more than 2 days behind <data>`.
 - **O que quer dizer:** o portal (saude.abelhaninja.de) lê os dados deste repo e está mais de 2 dias
   atrás, ou o `build.json` dele não abriu. O problema está no portal, não aqui. Este alarme fica aqui
   porque o cron do portal pode ser desligado pelo GitHub sem que nada mais avise.
 - **O site foi afetado?** Este site não. O portal está com dados velhos.
 - **O que fazer:** abrir o
   [RUNBOOK do portal-saude](https://github.com/vasfvitor/portal-saude/blob/main/RUNBOOK.md) e ver o
-  último run do workflow de publicação de lá.
+  último run do workflow de publicação de lá. A issue fecha sozinha quando o portal alcançar.
 
 ## ci
 
@@ -162,8 +183,9 @@ Achados em 2026-11-03, ainda sem correção.
   Fase 3.
 - **Diff do CADOP perde o dia.** Ver [Diff do CADOP quebrou](#diff-do-cadop-quebrou). Fase 3.
 - **Script que para no meio republica falhas antigas.** Se o `snapshot.sh` parar por um erro inesperado,
-  o `FALHAS.tsv` e o `ESTADO.tsv` não são reescritos, e as falhas do dia anterior aparecem de novo. Fase
-  3.
+  o `FALHAS.tsv` e o `ESTADO.tsv` não são reescritos. O workflow agora percebe isso e fica vermelho (ver
+  [Coleta parou no meio](#coleta-parou-no-meio)), mas o `meta.json` ainda publica as falhas do dia
+  anterior. Fase 3.
 - **Arquivo que encolheu de verdade não tem saída.** Ver
   [Arquivo da ANS encolheu](#arquivo-da-ans-encolheu).
 - **A data do site só anda quando algum arquivo muda.** Num dia em que nada mudou na ANS, a data continua

@@ -5,8 +5,10 @@ name: feeds
 #
 # The CADOP is published at 10:00 UTC, so the run is at 10:30 UTC. Three jobs on purpose: a
 # rendering or deploy failure never loses a snapshot. A source that is down does not stop the
-# others: what was fetched is committed, then the job fails so GitHub sends the failure e-mail,
-# and the site is rebuilt with a notice. "Run workflow" with build_only only rebuilds the site.
+# others: what was fetched is committed, the "Fonte da ANS falhou" issue opens (the alerta action
+# from anvisa-hub, closed when the source answers again) and the site is rebuilt with a notice. A
+# stalled CADOP and a lagging portal open issues too; red is for what needs a change here
+# (RUNBOOK.md). "Run workflow" with build_only only rebuilds the site.
 
 on:
   schedule:
@@ -38,8 +40,11 @@ jobs:
     if: ${{ github.event_name != 'push' && !inputs.build_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      falhou: ${{ steps.snapshot.outputs.failed }}   # a source failed: the build puts the notice
     permissions:
       contents: write   # commit the snapshot
+      issues: write     # the alarm issue (alerta)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
       - id: day
@@ -77,9 +82,50 @@ jobs:
           # something may have landed on main meanwhile: rebase and retry, then fail loudly
           git push || (git pull --rebase origin main && git push) \
                    || (sleep 30 && git pull --rebase origin main && git push)
-      - name: Fail if a source failed (after committing the rest)
-        if: ${{ steps.snapshot.outputs.failed == 'true' }}
-        run: exit 1
+      # after the commit, so what was fetched is kept. snapshot.sh rewrites FALHAS.tsv (day, source,
+      # reason) on every run; a failure with no line for today means the script stopped halfway, a
+      # problem in the script, which stays red.
+      - name: List the sources that failed
+        id: fontes
+        if: ${{ !cancelled() }}
+        env:
+          DAY: ${{ steps.day.outputs.day }}
+          FALHOU: ${{ steps.snapshot.outputs.failed }}
+        run: |
+          if [ "$FALHOU" != true ]; then
+            echo "estado=normal" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          hoje=$(awk -F'\t' -v d="$DAY" '$1 == d {print "- " $2 ": " $3}' snapshots/FALHAS.tsv)
+          if [ -z "$hoje" ]; then
+            echo "::error::snapshot.sh failed with no source in FALHAS.tsv for $DAY: it stopped halfway"
+            exit 1
+          fi
+          printf '%s\n' "$hoje"
+          n=$(grep -c . <<<"$hoje")
+          if [ "$n" -eq 1 ]; then
+            titulo="Fonte da ANS falhou: 1 fonte com a versão anterior"
+          else
+            titulo="Fonte da ANS falhou: $n fontes com a versão anterior"
+          fi
+          {
+            echo "estado=ativo"
+            echo "titulo=$titulo"
+            echo "corpo<<FIM_DO_CORPO"
+            echo "Estas fontes da ANS não atualizaram na coleta de $DAY e ficaram com a versão anterior. As outras foram baixadas, e o site saiu com o aviso de coleta com falha."
+            echo
+            printf '%s\n' "$hoje"
+            echo "FIM_DO_CORPO"
+          } >> "$GITHUB_OUTPUT"
+      - name: Alarm issue for the sources that failed
+        if: ${{ !cancelled() }}
+        uses: vasfvitor/anvisa-hub/.github/actions/alerta@main
+        with:
+          chave: ans-fonte-falhou
+          titulo: ${{ steps.fontes.outputs.titulo }}
+          estado: ${{ steps.fontes.outputs.estado }}
+          corpo: ${{ steps.fontes.outputs.corpo }}
+          runbook: https://github.com/vasfvitor/ans-feeds/blob/main/RUNBOOK.md#fonte-da-ans-falhou
 
   build:
     needs: snapshot
@@ -100,9 +146,14 @@ jobs:
           enable-cache: true
       - run: uv sync --locked
       - name: Build the site
+        env:
+          SNAPSHOT: ${{ needs.snapshot.result }}
+          FALHOU: ${{ needs.snapshot.outputs.falhou }}
+        # a failed source no longer turns the snapshot job red (it opens an issue): the notice reads
+        # the job's output too
         run: |
           extra=()
-          if [ "${{ needs.snapshot.result }}" = "failure" ]; then
+          if [ "$SNAPSHOT" = failure ] || [ "$FALHOU" = true ]; then
             extra=(--notice "A coleta de hoje falhou em parte; estes dados são da última coleta bem-sucedida de cada fonte.")
           fi
           uv run ans-feeds build --snapshots snapshots --site site "${extra[@]}"
@@ -127,6 +178,7 @@ jobs:
     permissions:
       pages: write
       id-token: write
+      issues: write   # the alarm issues (alerta)
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -134,27 +186,61 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346   # v5.0.1
 
-      # after the deploy, so what was collected is always published. Red when the CADOP (daily at
-      # the ANS) stopped changing, or when the portal, which only reads this data, is days behind
-      # it: the portal's own schedule can be disabled by GitHub and nothing else would notice.
+      # after the deploy, so what was collected is always published. A CADOP (daily at the ANS) that
+      # stopped changing and a portal days behind this data (its schedule can be disabled by GitHub
+      # and nothing else would notice) open issues; a CADOP with no Last-Modified stays red.
       - name: Check the CADOP's age and the portal's lag
+        id: idade
         if: ${{ always() }}
         env:
           DATE: ${{ needs.build.outputs.date }}
           CADOP_DIAS: ${{ needs.build.outputs.cadop_dias }}
           PORTAL: https://saude.abelhaninja.de/build.json
         run: |
-          falhou=0
           echo "CADOP: Last-Modified ${CADOP_DIAS:-?} days ago"
-          if [ -z "$CADOP_DIAS" ] || [ "$CADOP_DIAS" -gt 7 ]; then
-            echo "::error::the CADOP has no Last-Modified or has not changed at the ANS for ${CADOP_DIAS} days"
-            falhou=1
-          fi
           atraso=$(curl -fsS "$PORTAL?t=$(date +%s)" | jq -r --arg d "$DATE" \
             '(($d | strptime("%Y-%m-%d") | mktime) - (.dados_date | strptime("%Y-%m-%d") | mktime)) / 86400 | floor') || atraso=""
           echo "data here: $DATE; portal: ${atraso:-?} days behind"
-          if [ -z "$atraso" ] || [ "$atraso" -gt 2 ]; then
-            echo "::error::the portal could not be read or is more than 2 days behind $DATE"
-            falhou=1
+          {
+            if [ -n "$CADOP_DIAS" ]; then
+              if [ "$CADOP_DIAS" -gt 7 ]; then echo "cadop_estado=ativo"; else echo "cadop_estado=normal"; fi
+            fi
+            echo "cadop_titulo=CADOP parado na ANS há $CADOP_DIAS dias"
+            echo "cadop_corpo=O CADOP, o cadastro das operadoras que a ANS publica todo dia, não muda há $CADOP_DIAS dias. O site segue com o último CADOP publicado."
+            if [ -z "$atraso" ] || [ "$atraso" -gt 2 ]; then echo "portal_estado=ativo"; else echo "portal_estado=normal"; fi
+            if [ -z "$atraso" ]; then
+              echo "portal_titulo=O build.json do portal não abriu"
+              echo "portal_corpo=Não deu para ler $PORTAL. O portal pode estar fora do ar ou sem certificado."
+            else
+              echo "portal_titulo=Portal $atraso dias atrás dos dados da ANS"
+              echo "portal_corpo=Os dados daqui são de $DATE, e o portal (saude.abelhaninja.de) ainda está com os de $atraso dias antes. Ele lê estes dados e deveria estar no máximo 2 dias atrás."
+            fi
+          } >> "$GITHUB_OUTPUT"
+          if [ -n "$CADOP_DIAS" ] && [ "$CADOP_DIAS" -gt 7 ]; then
+            echo "the CADOP has not changed at the ANS for $CADOP_DIAS days"
           fi
-          exit "$falhou"
+          if [ -z "$atraso" ] || [ "$atraso" -gt 2 ]; then
+            echo "the portal could not be read or is more than 2 days behind $DATE"
+          fi
+          if [ -z "$CADOP_DIAS" ]; then
+            echo "::error::the CADOP has no Last-Modified"
+            exit 1
+          fi
+      - name: Alarm issue for a stalled CADOP
+        if: ${{ always() }}
+        uses: vasfvitor/anvisa-hub/.github/actions/alerta@main
+        with:
+          chave: ans-cadop-parado
+          titulo: ${{ steps.idade.outputs.cadop_titulo }}
+          estado: ${{ steps.idade.outputs.cadop_estado }}
+          corpo: ${{ steps.idade.outputs.cadop_corpo }}
+          runbook: https://github.com/vasfvitor/ans-feeds/blob/main/RUNBOOK.md#cadop-parado-na-ans
+      - name: Alarm issue for a lagging portal
+        if: ${{ always() }}
+        uses: vasfvitor/anvisa-hub/.github/actions/alerta@main
+        with:
+          chave: ans-portal-atrasado
+          titulo: ${{ steps.idade.outputs.portal_titulo }}
+          estado: ${{ steps.idade.outputs.portal_estado }}
+          corpo: ${{ steps.idade.outputs.portal_corpo }}
+          runbook: https://github.com/vasfvitor/ans-feeds/blob/main/RUNBOOK.md#portal-atrasado
