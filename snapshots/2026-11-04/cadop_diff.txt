@@ -1,0 +1,4 @@
+### Relatorio_cadop.csv (snapshots/2026-11-01 → snapshots/2026-11-04): 1105 → 1105; entraram 0, saíram 0, alterados 1
+  campos alterados: {'REPRESENTANTE': 1, 'CARGO_REPRESENTANTE': 1}
+  ~ 329339 {'REPRESENTANTE': ('CLARISSA INES ALMEIDA', 'LEANDRO AVANY NUNES'), 'CARGO_REPRESENTANTE': ('Presidente em exercício', 'Presidente')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-11-04
