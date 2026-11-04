@@ -21,7 +21,7 @@ Quem cria ou muda um alarme ou uma mensagem de erro atualiza este arquivo no mes
 | feeds / build | `changed layout`, `portabilidade.ler needs a fix` | [Página de portabilidade mudou](#página-de-portabilidade-mudou) |
 | feeds / build | `Traceback`, `KeyError`, `UnicodeDecodeError` | [Um arquivo da ANS mudou de formato](#um-arquivo-da-ans-mudou-de-formato) |
 | feeds / deploy | issue "CADOP parado na ANS", `the CADOP has no Last-Modified` | [CADOP parado na ANS](#cadop-parado-na-ans) |
-| feeds / deploy | issue "Portal N dias atrás" ou "O build.json do portal não abriu" | [Portal atrasado](#portal-atrasado) |
+| feeds / deploy | issue "Portal N dias atrás" ou "O build.json do portal não abriu", `this site's meta.json has no date` | [Portal atrasado](#portal-atrasado) |
 | ci | ruff, pytest, build | [Lint, formato ou testes](#lint-formato-ou-testes) |
 
 ## feeds
@@ -148,6 +148,11 @@ só remonta o site, sem baixar nada.
 - **O que fazer:** abrir o
   [RUNBOOK do portal-saude](https://github.com/vasfvitor/portal-saude/blob/main/RUNBOOK.md) e ver o
   último run do workflow de publicação de lá. A issue fecha sozinha quando o portal alcançar.
+- **O `build.json` não abriu:** a leitura já foi tentada quatro vezes, com 10 segundos entre elas. Então
+  não é uma oscilação de rede.
+- **Vermelho, com `::error::this site's meta.json has no date`:** o problema é deste site, não do portal.
+  O build saiu sem a data dos dados, então o atraso não foi medido e a issue do portal não mudou. Pedir
+  ajuda.
 
 ## ci
 
@@ -183,9 +188,9 @@ Achados em 2026-11-03, ainda sem correção.
   Fase 3.
 - **Diff do CADOP perde o dia.** Ver [Diff do CADOP quebrou](#diff-do-cadop-quebrou). Fase 3.
 - **Script que para no meio republica falhas antigas.** Se o `snapshot.sh` parar por um erro inesperado,
-  o `FALHAS.tsv` e o `ESTADO.tsv` não são reescritos. O workflow agora percebe isso e fica vermelho (ver
-  [Coleta parou no meio](#coleta-parou-no-meio)), mas o `meta.json` ainda publica as falhas do dia
-  anterior. Fase 3.
+  o `ESTADO.tsv` não é reescrito. O workflow percebe isso e fica vermelho (ver
+  [Coleta parou no meio](#coleta-parou-no-meio)), e o `meta.json` desse dia sai sem a lista de falhas.
+  Fase 3.
 - **Arquivo que encolheu de verdade não tem saída.** Ver
   [Arquivo da ANS encolheu](#arquivo-da-ans-encolheu).
 - **A data do site só anda quando algum arquivo muda.** Num dia em que nada mudou na ANS, a data continua
