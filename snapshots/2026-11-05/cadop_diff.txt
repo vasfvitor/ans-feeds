@@ -1,0 +1,10 @@
+### Relatorio_cadop.csv (snapshots/2026-11-04 → snapshots/2026-11-05): 1105 → 1102; entraram 0, saíram 3, alterados 0
+  - 340162 SAMIG - SERVIÇOS LTDA.
+  - 416517 PLANODENTE LTDA.
+  - 423211 J&L ADMINISTRADORA DE BENEFICIOS E SOL EM SAUDE LT
+  campos alterados: {}
+### Relatorio_cadop_canceladas.csv (snapshots/2026-10-29 → snapshots/2026-11-05): 3079 → 3082; entraram 3, saíram 0, alterados 0
+  + 340162 SAMIG - SERVIÇOS LTDA. 2026-11-03 Alternat. à Liquidação - Deliberação de Diretoria Colegiada
+  + 416517 PLANODENTE LTDA. 2026-11-03 Alternat. à Liquidação - Deliberação de Diretoria Colegiada
+  + 423211 J&L ADMINISTRADORA DE BENEFICIOS E SOL EM SAUDE LT 2026-11-03 Alternat. à Liquidação - Deliberação de Diretoria Colegiada
+  campos alterados: {}
