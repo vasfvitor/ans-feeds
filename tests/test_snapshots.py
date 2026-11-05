@@ -41,11 +41,12 @@ def test_first_seen_leaves_the_baseline_out(tree):
 
 def test_real_tree():
     assert snapshots.days(SNAPSHOTS)[:2] == ["2026-10-22", "2026-10-23"]
-    assert snapshots.latest(SNAPSHOTS, "Relatorio_cadop_canceladas.csv").parent.name == "2026-10-22"
-    assert [d for d, _ in snapshots.versions(SNAPSHOTS, "Relatorio_cadop.csv")][:2] == [
-        "2026-10-22",
-        "2026-10-23",
-    ]
+    # The first days are fixed history; later ones grow daily, so only their shape is checked.
+    for name in ("Relatorio_cadop.csv", "Relatorio_cadop_canceladas.csv"):
+        dias = [d for d, _ in snapshots.versions(SNAPSHOTS, name)]
+        assert dias[0] == "2026-10-22" and dias == sorted(set(dias))
+        assert snapshots.latest(SNAPSHOTS, name).parent.name == dias[-1]
+    assert [d for d, _ in snapshots.versions(SNAPSHOTS, "Relatorio_cadop.csv")][1] == "2026-10-23"
 
 
 def test_falhas_reads_what_the_last_run_could_not_update(tree):

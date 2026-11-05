@@ -3,7 +3,7 @@ import json
 import pytest
 from conftest import SNAPSHOTS, write_day
 
-from ans_feeds import eventos, operadoras, portabilidade
+from ans_feeds import eventos, operadoras, portabilidade, snapshots
 
 IGR_HEAD = (
     "REGISTRO_OPERADORA;RAZAO_SOCIAL;COBERTURA;IGR;QTD_RECLAMACOES;QTD_BENEFICIARIOS;"
@@ -55,7 +55,11 @@ def reais():
 
 
 def test_real_counts_and_no_contact_data(reais):
-    assert sum(o["situacao"] == "ativa" for o in reais.values()) == 1106
+    # Invariants, not a count: the snapshots grow daily (1106 on 2026-10-29, 1105 on 2026-11-01).
+    cadop = snapshots.latest(SNAPSHOTS, eventos.ATIVAS)
+    ativas = {eventos.registro(r["REGISTRO_OPERADORA"]) for r in eventos.rows(cadop)} - {None, ""}
+    assert {r for r, o in reais.items() if o["situacao"] == "ativa"} == ativas
+    assert len(ativas) > 1000  # a parse that came out empty or cut short fails here
     texto = json.dumps(list(reais.values()), ensure_ascii=False)
     assert "@" not in texto
     for campo in ("TELEFONE", "telefone", "email", "REPRESENTANTE", "representante"):

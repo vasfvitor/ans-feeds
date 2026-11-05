@@ -172,17 +172,19 @@ deploy vem do workflow feeds.
 
 - **Testes que quebram sozinhos:** vários testes conferem números dos snapshots reais (ver
   [Problemas conhecidos](#problemas-conhecidos)). Quando um deles falha sem que ninguém tenha mudado o
-  código, o dado mudou na ANS, não o código. Em 03/11/2026, falharam dois:
-  - `test_real_counts_and_no_contact_data`: esperava 1106 operadoras ativas, e o CADOP passou a ter 1105;
-  - `test_real_tree`: esperava o último `Relatorio_cadop_canceladas.csv` em `2026-10-22`, e ele está em
-    `2026-10-29`.
+  código, o dado mudou na ANS, não o código. Em 03/11/2026, falharam dois, e desde 05/11/2026 eles conferem
+  invariantes em vez de números:
+  - `test_real_counts_and_no_contact_data`: as operadoras ativas publicadas são as do último
+    `Relatorio_cadop.csv`, e são mais de 1000;
+  - `test_real_tree`: os dois CADOPs começam em `2026-10-22`, e o último arquivo é o do último dia em que ele
+    mudou.
 - **Pedir ajuda quando:** não for um desses casos.
 
 ## Problemas conhecidos
 
 Achados em 2026-11-03, ainda sem correção.
 
-- **Testes presos aos dados reais.** Além dos dois acima, há uns seis que conferem valores que a ANS vai
+- **Testes presos aos dados reais.** Fora os dois acima, já corrigidos, há uns seis que conferem valores que a ANS vai
   mudar: o ressarcimento da Abertta (do índice de 202609), o número de eventos e a data da página de
   portabilidade, a portabilidade e o cancelamento da Univida, e as reclamações da Mediservice no 3T2026.
   Fase 3.
