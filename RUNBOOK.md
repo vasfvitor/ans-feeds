@@ -148,6 +148,10 @@ só remonta o site, sem baixar nada.
 - **O que quer dizer:** o portal (saude.abelhaninja.de) lê os dados deste repo e está mais de 2 dias
   atrás, ou o `build.json` dele não abriu. O problema está no portal, não aqui. Este alarme fica aqui
   porque o cron do portal pode ser desligado pelo GitHub sem que nada mais avise.
+- **Contra qual data:** a que estes dados tinham antes deste run, não a que o run acabou de publicar,
+  que o portal ainda não teve tempo de ler. Sem isso, um run atrasado que publica uma data nova depois de
+  dias sem mudança abria e fechava a issue (04 e 05/11/2026). O log mostra as duas:
+  `data here: <data> (before this run: <data anterior>); portal: <data do portal>, N days behind <data anterior>`.
 - **O site foi afetado?** Este site não. O portal está com dados velhos.
 - **O que fazer:** abrir o
   [RUNBOOK do portal-saude](https://github.com/vasfvitor/portal-saude/blob/main/RUNBOOK.md) e ver o
