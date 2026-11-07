@@ -75,6 +75,8 @@ def test_a_failed_source_gets_the_subject_the_portal_labels():
     assert assunto_da_fonte("histórico do IDSS") == "idss"
     assert assunto_da_fonte("HC do ressarcimento") == "ressarcimento"
     assert assunto_da_fonte("outra.csv") is None
+    # written by feeds.yml when snapshot.sh stops halfway: no subject, so the portal shows the text
+    assert assunto_da_fonte("algumas fontes (a coleta parou no meio)") is None
 
 
 def test_versions_by_pattern_run_across_renames(tree):

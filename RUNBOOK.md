@@ -16,7 +16,7 @@ Quem cria ou muda um alarme ou uma mensagem de erro atualiza este arquivo no mes
 | feeds / snapshot | issue "Fonte da ANS falhou", `FALHA:`, `HTTP`, `fora do ar`, `nenhum` | [Fonte da ANS falhou](#fonte-da-ans-falhou) |
 | feeds / snapshot | `stopped halfway` | [Coleta parou no meio](#coleta-parou-no-meio) |
 | feeds / snapshot | `bytes contra`, `na versão anterior` | [Arquivo da ANS encolheu](#arquivo-da-ans-encolheu) |
-| feeds / snapshot | `Traceback` em "CADOP diff" | [Diff do CADOP quebrou](#diff-do-cadop-quebrou) |
+| feeds / cadop-diff | `cadop_diff.py failed`; `Traceback` em "CADOP diff" | [Diff do CADOP quebrou](#diff-do-cadop-quebrou) |
 | feeds / snapshot | `git push`, `CONFLICT` | [Commit do snapshot falhou](#commit-do-snapshot-falhou) |
 | feeds / build | `changed layout`, `portabilidade.ler needs a fix` | [Página de portabilidade mudou](#página-de-portabilidade-mudou) |
 | feeds / build | `Traceback`, `KeyError`, `UnicodeDecodeError` | [Um arquivo da ANS mudou de formato](#um-arquivo-da-ans-mudou-de-formato) |
@@ -67,11 +67,12 @@ só remonta o site, sem baixar nada.
 ### Coleta parou no meio
 
 - **Onde aparece:** job snapshot, passo "List the sources that failed". Fica vermelho.
-- **Mensagem:** `::error::snapshot.sh failed with no source in FALHAS.tsv for <dia>: it stopped halfway`
+- **Mensagem:** `::error::snapshot.sh failed on <dia> without naming a source: it stopped halfway`
 - **O que quer dizer:** o `snapshot.sh` terminou com erro, mas sem registrar nenhuma fonte que falhou
   naquele dia. Ele parou no meio por um erro inesperado, um problema no script.
-- **O site foi afetado?** O que foi baixado antes do erro pode ter sido commitado. O site sai com o aviso
-  de coleta com falha.
+- **O site foi afetado?** O que foi baixado antes do erro foi commitado. O site sai com o aviso de coleta
+  com falha, e o `meta.json` lista em `falhas` a linha `algumas fontes (a coleta parou no meio)`, que o
+  portal mostra como está.
 - **Agir ou esperar:** pedir ajuda. O log do passo Snapshot mostra onde ele parou.
 
 ### Arquivo da ANS encolheu
@@ -88,13 +89,16 @@ só remonta o site, sem baixar nada.
 
 ### Diff do CADOP quebrou
 
-- **Onde aparece:** job snapshot, passo "CADOP diff against the previous snapshot", com um `Traceback`
-  (por exemplo, `KeyError` ou `UnicodeDecodeError`).
+- **Onde aparece:** job cadop-diff, vermelho, com
+  `::error::cadop_diff.py failed: the snapshot was committed without cadop_diff.txt`. O job snapshot fica
+  verde; o `Traceback` (por exemplo, `KeyError` ou `UnicodeDecodeError`) está no passo "CADOP diff against
+  the previous snapshot" dele, marcado com um aviso.
 - **O que quer dizer:** o CADOP novo veio com outro cabeçalho ou outra codificação.
-- **O site foi afetado?** O dia não foi guardado: os passos de artifact e de commit não rodam depois
-  desse erro. O build segue com os snapshots anteriores e o aviso de coleta com falha.
-- **Agir ou esperar:** pedir ajuda. O run seguinte baixa de novo o que mudou, mas vai quebrar no mesmo
-  ponto enquanto o formato for o novo.
+- **O site foi afetado?** Não por este passo: o dia foi guardado e commitado, só sem o `cadop_diff.txt`.
+  Mas se o formato mudou, o build costuma quebrar também (ver
+  [Um arquivo da ANS mudou de formato](#um-arquivo-da-ans-mudou-de-formato)).
+- **Agir ou esperar:** pedir ajuda. O `cadop_diff.py` (em `pesquisa/scripts/`) vai quebrar todo dia
+  enquanto o formato for o novo.
 
 ### Commit do snapshot falhou
 
@@ -184,11 +188,10 @@ deploy vem do workflow feeds.
 
 Achados em 2026-11-03, ainda sem correção.
 
-- **Diff do CADOP perde o dia.** Ver [Diff do CADOP quebrou](#diff-do-cadop-quebrou). Fase 3.
-- **Script que para no meio republica falhas antigas.** Se o `snapshot.sh` parar por um erro inesperado,
-  o `ESTADO.tsv` não é reescrito. O workflow percebe isso e fica vermelho (ver
-  [Coleta parou no meio](#coleta-parou-no-meio)), e o `meta.json` desse dia sai sem a lista de falhas.
-  Fase 3.
+- **Script que para no meio não reescreve o `ESTADO.tsv`.** O workflow percebe e fica vermelho (ver
+  [Coleta parou no meio](#coleta-parou-no-meio)), e o `meta.json` diz que a coleta foi parcial. Mas o
+  `ESTADO.tsv` fica com o Last-Modified e o sha256 anteriores: no dia seguinte, um arquivo já guardado
+  pode ser guardado de novo, e a idade do CADOP lida dele fica velha.
 - **Arquivo que encolheu de verdade não tem saída.** Ver
   [Arquivo da ANS encolheu](#arquivo-da-ans-encolheu).
 - **A data do site só anda quando algum arquivo muda.** Num dia em que nada mudou na ANS, a data continua

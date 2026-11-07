@@ -59,7 +59,9 @@ precisa de tudo de uma vez; para uma operadora só, use o arquivo individual.
 Além da data e das contagens, `falhas` lista as fontes que a última coleta não conseguiu atualizar:
 `{dia, fonte, motivo, assunto}`, com `fonte` como o nome do arquivo ou da página da ANS e `assunto` como a
 chave de `fontes` das operadoras (`cadastro`, `reclamacoes`, `idss`, `ressarcimento`, …), ou `null` quando a
-fonte não aparece nas páginas. Lista vazia quando tudo foi atualizado. Os números dessas fontes são os da
+fonte não aparece nas páginas. Quando a coleta parou no meio sem dizer qual fonte falhou, a lista traz uma
+linha com `fonte` igual a `algumas fontes (a coleta parou no meio)` e `assunto` `null`, para ser mostrada
+como está. Lista vazia quando tudo foi atualizado. Os números dessas fontes são os da
 última versão coletada. Um arquivo novo com menos da metade do tamanho anterior conta como falha e não
 substitui o anterior. `cadop_last_modified` é o Last-Modified do cadastro de operadoras (ISO 8601, UTC): a
 ANS o atualiza todo dia útil.

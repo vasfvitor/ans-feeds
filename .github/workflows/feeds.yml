@@ -42,6 +42,7 @@ jobs:
     timeout-minutes: 30
     outputs:
       falhou: ${{ steps.snapshot.outputs.failed }}   # a source failed: the build puts the notice
+      diff: ${{ steps.diff.outcome }}                # read by the cadop-diff job
     permissions:
       contents: write   # commit the snapshot
       issues: write     # the alarm issue (alerta)
@@ -50,16 +51,29 @@ jobs:
       - id: day
         run: echo "day=$(TZ=America/Sao_Paulo date +%F)" >> "$GITHUB_OUTPUT"
       # snapshot.sh gets the job's day, so a run that crosses midnight in Brasília files everything,
-      # FALHAS.tsv included, under the day the later steps read. FALHAS.tsv is emptied first: a script
-      # that stops before rewriting it then leaves no line for the day, even on a second run that day.
+      # FALHAS.tsv included, under the day the later steps read. FALHAS.tsv is emptied first, so a
+      # script that stops before rewriting it leaves no line of its own for the day, even on a second
+      # run that day; this step then writes one (PAROU), and meta.json says the collection is partial.
       - id: snapshot
         name: Snapshot
         env:
           DAY: ${{ steps.day.outputs.day }}
+          PAROU: algumas fontes (a coleta parou no meio)
         run: |
           : > snapshots/FALHAS.tsv
-          bash scripts/snapshot.sh snapshots "$DAY" || echo "failed=true" >> "$GITHUB_OUTPUT"
+          if ! bash scripts/snapshot.sh snapshots "$DAY"; then
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+            if ! awk -F'\t' -v d="$DAY" '$1 == d {f = 1} END {exit !f}' snapshots/FALHAS.tsv; then
+              printf '%s\t%s\t%s\n' "$DAY" "$PAROU" "snapshot.sh terminou com erro sem dizer qual fonte" \
+                >> snapshots/FALHAS.tsv
+              echo "parou=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+      # its own failure must not cost the day: the step goes on, its partial output is removed, the
+      # snapshot is committed, and the cadop-diff job turns the run red.
       - name: CADOP diff against the previous snapshot
+        id: diff
+        continue-on-error: true
         run: |
           set -o pipefail   # a crash in cadop_diff.py must not hide behind tee
           day=${{ steps.day.outputs.day }}
@@ -67,7 +81,8 @@ jobs:
             prev=$(ls -d snapshots/20??-??-?? | sed 's:.*/::' | awk -v d="$day" '$0 < d' | tail -1)
             if [ -n "$prev" ]; then
               python3 -I pesquisa/scripts/cadop_diff.py "snapshots/$prev" "snapshots/$day" \
-                | tee "snapshots/$day/cadop_diff.txt"
+                | tee "snapshots/$day/cadop_diff.txt" \
+                || { rm -f "snapshots/$day/cadop_diff.txt"; exit 1; }
             fi
           fi
       - name: Keep the snapshot as an artifact (survives a failed push)
@@ -90,7 +105,7 @@ jobs:
           git push || (git pull --rebase origin main && git push) \
                    || (sleep 30 && git pull --rebase origin main && git push)
       # after the commit, so what was fetched is kept. snapshot.sh rewrites FALHAS.tsv (day, source,
-      # reason) on every run; a failure with no line for today means the script stopped halfway, a
+      # reason) on every run; a failure that named no source means the script stopped halfway, a
       # problem in the script, which stays red.
       - name: List the sources that failed
         id: fontes
@@ -98,16 +113,17 @@ jobs:
         env:
           DAY: ${{ steps.day.outputs.day }}
           FALHOU: ${{ steps.snapshot.outputs.failed }}
+          PAROU: ${{ steps.snapshot.outputs.parou }}
         run: |
           if [ "$FALHOU" != true ]; then
             echo "estado=normal" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          hoje=$(awk -F'\t' -v d="$DAY" '$1 == d {print "- " $2 ": " $3}' snapshots/FALHAS.tsv)
-          if [ -z "$hoje" ]; then
-            echo "::error::snapshot.sh failed with no source in FALHAS.tsv for $DAY: it stopped halfway"
+          if [ "$PAROU" = true ]; then
+            echo "::error::snapshot.sh failed on $DAY without naming a source: it stopped halfway"
             exit 1
           fi
+          hoje=$(awk -F'\t' -v d="$DAY" '$1 == d {print "- " $2 ": " $3}' snapshots/FALHAS.tsv)
           printf '%s\n' "$hoje"
           n=$(grep -c . <<<"$hoje")
           if [ "$n" -eq 1 ]; then
@@ -133,6 +149,18 @@ jobs:
           estado: ${{ steps.fontes.outputs.estado }}
           corpo: ${{ steps.fontes.outputs.corpo }}
           runbook: https://github.com/vasfvitor/ans-feeds/blob/main/RUNBOOK.md#fonte-da-ans-falhou
+
+  # a job of its own, so the snapshot job stays green and the site gets no "collection failed" notice:
+  # the day was collected and committed, only its cadop_diff.txt is missing.
+  cadop-diff:
+    needs: snapshot
+    if: ${{ always() && needs.snapshot.outputs.diff == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          echo "::error::cadop_diff.py failed: the snapshot was committed without cadop_diff.txt"
+          exit 1
 
   build:
     needs: snapshot
