@@ -15,8 +15,17 @@ OPTS = {"portal_url": PORTAL_URL, "notice": "Coleta falhou."}
 
 @pytest.fixture(scope="module")
 def site(tmp_path_factory):
+    """Built from today's snapshots: only invariants are checked on it."""
     out = tmp_path_factory.mktemp("site")
     build_site(SNAPSHOTS, out, base_url=BASE_URL, base_tag=BASE_TAG, **OPTS)
+    return out
+
+
+@pytest.fixture(scope="module")
+def site_congelado(tmp_path_factory, congelados):
+    """Built from the snapshots as of CONGELADO, for events and values checked by hand."""
+    out = tmp_path_factory.mktemp("site_congelado")
+    build_site(congelados, out, base_url=BASE_URL, base_tag=BASE_TAG, **OPTS)
     return out
 
 
@@ -64,7 +73,7 @@ def test_build_is_idempotent(site, tmp_path):
 
 def test_operator_data_is_published(site):
     idx = json.loads((site / "dados" / "operadoras.json").read_text(encoding="utf-8"))
-    assert len(idx) > 1106
+    assert len(idx) > 1000  # a parse that came out empty or cut short fails here
     for o in idx[:20]:
         rec = json.loads((site / "dados" / "operadora" / f"{o['registro']}.json").read_text())
         assert rec["registro"] == o["registro"] and rec["nome"] == o["nome"]
@@ -84,9 +93,9 @@ def test_todas_holds_the_same_operators_as_the_files(site):
         assert o == json.loads(arquivo.read_text(encoding="utf-8"))
 
 
-def test_known_events(site):
+def test_known_events(site_congelado):
     def text(name):
-        return (site / name).read_text(encoding="utf-8")
+        return (site_congelado / name).read_text(encoding="utf-8")
 
     assert f"tag:{BASE_TAG}:cancelamento/423122/2026-10-09" in text("cancelamento.xml")
     assert f"tag:{BASE_TAG}:direcao-tecnica/3077/422681" in text("direcao-tecnica.xml")
@@ -128,8 +137,8 @@ def test_every_operator_has_a_feed_that_links_to_the_portal(site):
     assert len(list((site / "operadora").iterdir())) == len(todas["operadoras"])
 
 
-def test_operator_feed_has_complaints_and_score(site):
-    text = (site / "operadora" / "005711.xml").read_text(encoding="utf-8")
+def test_operator_feed_has_complaints_and_score(site_congelado):
+    text = (site_congelado / "operadora" / "005711.xml").read_text(encoding="utf-8")
     assert f"tag:{BASE_TAG}:idss/005711/2025_2024<" in text
     assert f"tag:{BASE_TAG}:reclamacoes/005711/3T2026<" in text
     assert "Reclamações de julho a setembro de 2026: " in text

@@ -170,24 +170,20 @@ deploy vem do workflow feeds.
   uv run pytest
   ```
 
-- **Testes que quebram sozinhos:** vários testes conferem números dos snapshots reais (ver
-  [Problemas conhecidos](#problemas-conhecidos)). Quando um deles falha sem que ninguém tenha mudado o
-  código, o dado mudou na ANS, não o código. Em 03/11/2026, falharam dois, e desde 05/11/2026 eles conferem
-  invariantes em vez de números:
-  - `test_real_counts_and_no_contact_data`: as operadoras ativas publicadas são as do último
-    `Relatorio_cadop.csv`, e são mais de 1000;
-  - `test_real_tree`: os dois CADOPs começam em `2026-10-22`, e o último arquivo é o do último dia em que ele
-    mudou.
+- **Testes e dados reais:** desde 05/11/2026, nenhum teste deveria quebrar só porque a ANS publicou
+  dado novo. Há dois tipos:
+  - os que leem os snapshots de hoje conferem só invariantes, como "as operadoras ativas são as do último
+    `Relatorio_cadop.csv`, e são mais de 1000". Se um deles falhar, o dado de hoje tem um problema de
+    verdade (arquivo vazio, cortado ou com formato novo) ou o código quebrou;
+  - os que conferem valores tirados à mão (Abertta, Univida, Mediservice, portabilidade, eventos
+    conhecidos) leem os snapshots só até o dia `CONGELADO` de `tests/conftest.py`, que hoje é
+    `2026-11-05`. Se um deles falhar, foi o código que mudou, não a ANS.
 - **Pedir ajuda quando:** não for um desses casos.
 
 ## Problemas conhecidos
 
 Achados em 2026-11-03, ainda sem correção.
 
-- **Testes presos aos dados reais.** Fora os dois acima, já corrigidos, há uns seis que conferem valores que a ANS vai
-  mudar: o ressarcimento da Abertta (do índice de 202609), o número de eventos e a data da página de
-  portabilidade, a portabilidade e o cancelamento da Univida, e as reclamações da Mediservice no 3T2026.
-  Fase 3.
 - **Diff do CADOP perde o dia.** Ver [Diff do CADOP quebrou](#diff-do-cadop-quebrou). Fase 3.
 - **Script que para no meio republica falhas antigas.** Se o `snapshot.sh` parar por um erro inesperado,
   o `ESTADO.tsv` não é reescrito. O workflow percebe isso e fica vermelho (ver

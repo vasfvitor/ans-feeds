@@ -32,6 +32,8 @@ technical direction, special portability) from the committed snapshots. The rese
 ## Layout
 
 - `src/ans_feeds/`: the package (`ans-feeds build --snapshots snapshots --site site`); tests in `tests/`.
+  Tests on the real `snapshots/` check only invariants; a value checked by hand goes on the
+  `congelados` fixture (`conftest.py`, the tree up to `CONGELADO`), never on today's tree, which grows daily.
   Besides the feeds, the build publishes `dados/` (search index and one JSON per operator) for the public
   portal; the contract is `src/ans_feeds/dados_schema.md`. Facts with base and source only: no score of
   our own, no contact data, no prudential class as a health grade. `dados/todas.json` holds every

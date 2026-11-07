@@ -4,7 +4,6 @@ import json
 from datetime import date
 
 import pytest
-from conftest import SNAPSHOTS
 
 from ans_feeds import tabelas
 from ans_feeds.cli import BASE_TAG, BASE_URL, PORTAL_URL
@@ -12,9 +11,10 @@ from ans_feeds.site import build_site
 
 
 @pytest.fixture(scope="module")
-def site(tmp_path_factory):
+def site(tmp_path_factory, congelados):
+    """Built from the snapshots as of CONGELADO: the Univida and Abertta rows are hand-checked."""
     out = tmp_path_factory.mktemp("site")
-    build_site(SNAPSHOTS, out, base_url=BASE_URL, base_tag=BASE_TAG, portal_url=PORTAL_URL)
+    build_site(congelados, out, base_url=BASE_URL, base_tag=BASE_TAG, portal_url=PORTAL_URL)
     return out
 
 

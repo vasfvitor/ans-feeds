@@ -67,7 +67,12 @@ def test_real_snapshots():
         assert not dup, dup
         assert all("//" not in e.id and not e.id.endswith("/") for e in lista)
     assert max(e.data for e in canc) >= date(2026, 10, 9)
+    assert canc[0].fonte.startswith("https://dadosabertos.ans.gov.br/")
+
+
+def test_known_events(congelados):
+    dt = eventos.direcao_tecnica(congelados)
     ro3077 = [e for e in dt if e.detalhes["Resolução Operacional"] == "3077"]
     assert ro3077 and ro3077[0].data == date(2025, 12, 11)
+    regs = eventos.registros(congelados)
     assert next(e for e in regs if e.registro == "425010").data == date(2026, 7, 24)
-    assert canc[0].fonte.startswith("https://dadosabertos.ans.gov.br/")

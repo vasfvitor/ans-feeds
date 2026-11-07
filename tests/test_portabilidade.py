@@ -42,8 +42,8 @@ def test_registration_written_in_the_name():
     assert portabilidade.casar(nome, {}, {}) == "363111"
 
 
-def test_events_and_match_rate():
-    eventos, atualizado = portabilidade.portabilidades(SNAPSHOTS)
+def test_events_and_match_rate(congelados):
+    eventos, atualizado = portabilidade.portabilidades(congelados)
     assert len(eventos) == 137 and atualizado
     por_ro = {e.chave: e for e in eventos}
     assert por_ro["3094"].data == date(2026, 2, 24)

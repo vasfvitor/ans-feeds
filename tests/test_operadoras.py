@@ -43,15 +43,26 @@ def test_quarterly_index_and_peer_median(tree):
     assert benef["000001"] == 100000
 
 
+def por_registro(root):
+    todos = (
+        eventos.cancelamentos(root)
+        + eventos.registros(root)
+        + eventos.direcao_tecnica(root)
+        + portabilidade.portabilidades(root)[0]
+    )
+    return {o["registro"]: o for o in operadoras.operadoras(root, todos)}
+
+
 @pytest.fixture(scope="module")
 def reais():
-    todos = (
-        eventos.cancelamentos(SNAPSHOTS)
-        + eventos.registros(SNAPSHOTS)
-        + eventos.direcao_tecnica(SNAPSHOTS)
-        + portabilidade.portabilidades(SNAPSHOTS)[0]
-    )
-    return {o["registro"]: o for o in operadoras.operadoras(SNAPSHOTS, todos)}
+    """Today's snapshots: only invariants are checked on them."""
+    return por_registro(SNAPSHOTS)
+
+
+@pytest.fixture(scope="module")
+def congeladas(congelados):
+    """The snapshots as of CONGELADO, for the values checked by hand."""
+    return por_registro(congelados)
 
 
 def test_real_counts_and_no_contact_data(reais):
@@ -66,17 +77,17 @@ def test_real_counts_and_no_contact_data(reais):
         assert campo not in texto
 
 
-def test_mediservice_by_coverage(reais):
+def test_mediservice_by_coverage(congeladas):
     # Checked by hand in pda-023: 38 + 29 + 48 complaints (médico-hospitalar) in Jul-Sep 2026.
-    por_cob = {r["cobertura"]: r for r in reais["333689"]["reclamacoes"]}
+    por_cob = {r["cobertura"]: r for r in congeladas["333689"]["reclamacoes"]}
     assert por_cob["médico-hospitalar"]["reclamacoes"] == 115
     assert por_cob["médico-hospitalar"]["indice"] == 39.03
     assert por_cob["odontológica"]["reclamacoes"] == 73 + 83 + 115
     assert len(por_cob["médico-hospitalar"]["serie"]) == 8
 
 
-def test_univida_in_liquidation(reais):
-    u = reais["422134"]
+def test_univida_in_liquidation(congeladas):
+    u = congeladas["422134"]
     assert u["situacao"] == "cancelada"
     assert u["cancelamento"] == {"data": "2026-09-22", "motivo": "Liquidação Extrajudicial"}
     assert u["portabilidade_vigente"]
@@ -84,12 +95,17 @@ def test_univida_in_liquidation(reais):
     assert any(e["tipo"] == "cancelamento" for e in u["eventos"])
 
 
-def test_sus_index_counts_the_parcelado_as_paid(reais):
+def test_sus_index_of_abertta(congeladas):
     # Abertta (314668), checked by hand in the 2026-09 file: pago 4.707.263,65 + parcelado
     # 33.664,10 = cobrado 4.740.927,75, so the ANS index is 100% though not all of it was paid.
-    a = reais["314668"]["ressarcimento"]
+    # The 2026-10 file, the one CONGELADO reads, repeats those three totals.
+    a = congeladas["314668"]["ressarcimento"]
+    assert a["competencia"] == "2026-10"
     assert a["valor_parcelado"] == 33664.10 and a["indice_pagamento"] == 100.0
     assert a["valor_pago"] + a["valor_parcelado"] == pytest.approx(a["valor_cobrado"])
+
+
+def test_sus_index_counts_the_parcelado_as_paid(reais):
     com_cobranca = [
         o["ressarcimento"]
         for o in reais.values()
