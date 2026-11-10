@@ -1,0 +1,7 @@
+### Relatorio_cadop.csv (snapshots/2026-11-07 → snapshots/2026-11-10): 1100 → 1102; entraram 2, saíram 0, alterados 2
+  + 425133 UNIMED SEGSAÚDE S.A. 2026-11-09 
+  + 425141 INTER ADMINISTRADORA DE BENEFICIOS LTDA 2026-11-05 
+  campos alterados: {'FAX': 1, 'NOME_FANTASIA': 1, 'LOGRADOURO': 1, 'NUMERO': 1, 'COMPLEMENTO': 1, 'BAIRRO': 1, 'CIDADE': 1, 'UF': 1, 'CEP': 1}
+  ~ 400190 {'FAX': ('28987000', '')}
+  ~ 424625 {'NOME_FANTASIA': ('', 'SYNC SAUDE'), 'LOGRADOURO': ('RUA DA ASSEMBLEIA', 'Avenida Engenheiro Domingos Ferreira'), 'NUMERO': ('10.0', '2391'), 'COMPLEMENTO': ('', '1º andar, sala 103, Empresarial San Mari'), 'BAIRRO': ('CENTRO', 'Boa Viagem'), 'CIDADE': ('Rio de Janeiro', 'Recife'), 'UF': ('RJ', 'PE'), 'CEP': ('20011000', '51020031')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-11-10
