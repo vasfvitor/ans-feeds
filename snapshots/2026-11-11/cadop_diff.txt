@@ -1,0 +1,7 @@
+### Relatorio_cadop.csv (snapshots/2026-11-10 → snapshots/2026-11-11): 1102 → 1102; entraram 0, saíram 0, alterados 4
+  campos alterados: {'TELEFONE': 1, 'FAX': 1, 'ENDERECO_ELETRONICO': 1, 'LOGRADOURO': 3, 'NUMERO': 3, 'COMPLEMENTO': 3, 'BAIRRO': 3, 'CIDADE': 3, 'CEP': 3, 'RAZAO_SOCIAL': 1, 'UF': 2}
+  ~ 416410 {'TELEFONE': ('32263996', '84252212'), 'FAX': ('32263221', ''), 'ENDERECO_ELETRONICO': ('contato@socioodonto.com.br', 'contato.socioodonto@gmail.com')}
+  ~ 417050 {'LOGRADOURO': ('AV. JOSÉ SILVA DE AZEVEDO NETO', 'Rua Almirante Grenfall'), 'NUMERO': ('200', '405'), 'COMPLEMENTO': ('EVOLUTION 3 BL. 2 GRUPOS 101, 103 E 108', 'Sala 109, BIOCO 01'), 'BAIRRO': ('BARRA DA TIJUCA', 'Parque Duque'), 'CIDADE': ('Rio de Janeiro', 'Duque de Caxias'), 'CEP': ('22775056', '25085135')}
+  ~ 422860 {'RAZAO_SOCIAL': ('SALUTY ADMINISTRADORA DE BENEFICIOS LTDA', 'COPESA - CONECTANDO PESSOAS À SAÚDE LTDA.'), 'LOGRADOURO': ('Avenida Ator José Wilker', 'Rua Gomes de Carvalho'), 'NUMERO': ('605', '1629'), 'COMPLEMENTO': ('bloco B - Sala 659', ''), 'BAIRRO': ('Jacarepaguá', 'Vila Olimpia'), 'CIDADE': ('Rio de Janeiro', 'São Paulo'), 'UF': ('RJ', 'SP'), 'CEP': ('22775024', '04547006')}
+  ~ 423858 {'LOGRADOURO': ('AVENIDA PAULISTA', 'RUA ITUIUTABA'), 'NUMERO': ('500', '340'), 'COMPLEMENTO': ('9º ANDAR', '1º ANDAR - SALA 12'), 'BAIRRO': ('BELA VISTA', 'PRADO'), 'CIDADE': ('São Paulo', 'Belo Horizonte'), 'UF': ('SP', 'MG'), 'CEP': ('01310000', '30411023')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-11-11
