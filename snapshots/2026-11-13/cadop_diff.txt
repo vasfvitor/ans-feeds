@@ -1,0 +1,5 @@
+### Relatorio_cadop.csv (snapshots/2026-11-12 → snapshots/2026-11-13): 1101 → 1101; entraram 0, saíram 0, alterados 2
+  campos alterados: {'ENDERECO_ELETRONICO': 1, 'MODALIDADE': 1}
+  ~ 416525 {'ENDERECO_ELETRONICO': ('primavida@primavida.com.br', 'ans@primavida.com.br')}
+  ~ 416801 {'MODALIDADE': ('Medicina de Grupo', 'Odontologia de Grupo')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-11-13
