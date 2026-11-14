@@ -1,0 +1,4 @@
+### Relatorio_cadop.csv (snapshots/2026-11-13 → snapshots/2026-11-14): 1101 → 1101; entraram 0, saíram 0, alterados 1
+  campos alterados: {'FAX': 1}
+  ~ 356581 {'FAX': ('32496110', '')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-11-14
