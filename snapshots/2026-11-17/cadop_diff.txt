@@ -1,0 +1,4 @@
+### Relatorio_cadop.csv (snapshots/2026-11-14 → snapshots/2026-11-17): 1101 → 1101; entraram 0, saíram 0, alterados 1
+  campos alterados: {'COMPLEMENTO': 1}
+  ~ 416525 {'COMPLEMENTO': ('SALA 2106 A 2111', 'SALA 2010 e 2106 A 2111')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-11-17
