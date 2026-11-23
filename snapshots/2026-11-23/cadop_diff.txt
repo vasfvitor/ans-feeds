@@ -1,0 +1,4 @@
+### Relatorio_cadop.csv (snapshots/2026-11-19 → snapshots/2026-11-23): 1101 → 1101; entraram 0, saíram 0, alterados 1
+  campos alterados: {'LOGRADOURO': 1, 'NUMERO': 1, 'COMPLEMENTO': 1, 'BAIRRO': 1, 'CIDADE': 1, 'UF': 1, 'CEP': 1}
+  ~ 417106 {'LOGRADOURO': ('AVENIDA PROFESSOR MAGALHÃES NETO', 'AL RIO NEGRO'), 'NUMERO': ('1550', '503'), 'COMPLEMENTO': ('SALAS 1501 A 1504 - ED. PREMIER TOWER EM', 'SALA COMERCIAL 2011'), 'BAIRRO': ('PITUBA', 'ALPHAVILLE CENTRO INDUSTRIAL E'), 'CIDADE': ('Salvador', 'Barueri'), 'UF': ('BA', 'SP'), 'CEP': ('41810012', '06454000')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-11-23
