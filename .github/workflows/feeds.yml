@@ -59,17 +59,21 @@ jobs:
       # FALHAS.tsv included, under the day the later steps read. FALHAS.tsv is emptied first, so a
       # script that stops before rewriting it leaves no line of its own for the day, even on a second
       # run that day; this step then writes one (PAROU), and meta.json says the collection is partial.
+      # The previous run's file is kept aside for snapshot.sh: a source still failing keeps its first
+      # failure day (column 4, desde).
       - id: snapshot
         name: Snapshot
         env:
           DAY: ${{ steps.day.outputs.day }}
           PAROU: algumas fontes (a coleta parou no meio)
+          FALHAS_ANTERIOR: ${{ runner.temp }}/FALHAS.anterior.tsv
         run: |
+          cp snapshots/FALHAS.tsv "$FALHAS_ANTERIOR" 2>/dev/null || : > "$FALHAS_ANTERIOR"
           : > snapshots/FALHAS.tsv
           if ! bash scripts/snapshot.sh snapshots "$DAY"; then
             echo "failed=true" >> "$GITHUB_OUTPUT"
             if ! awk -F'\t' -v d="$DAY" '$1 == d {f = 1} END {exit !f}' snapshots/FALHAS.tsv; then
-              printf '%s\t%s\t%s\n' "$DAY" "$PAROU" "snapshot.sh terminou com erro sem dizer qual fonte" \
+              printf '%s\t%s\t%s\t%s\n' "$DAY" "$PAROU" "snapshot.sh terminou com erro sem dizer qual fonte" "$DAY" \
                 >> snapshots/FALHAS.tsv
               echo "parou=true" >> "$GITHUB_OUTPUT"
             fi

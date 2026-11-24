@@ -59,7 +59,17 @@ def test_falhas_reads_what_the_last_run_could_not_update(tree):
             "dia": "2026-10-29",
             "fonte": "pda-023-igr.csv",
             "motivo": "1354 bytes contra 6756 na versão anterior",
+            "desde": "2026-10-29",  # a three-column row from before `desde`: failing since its day
         }
+    ]
+    (tree / "FALHAS.tsv").write_text(
+        "2026-11-23\tlistas RN 623\tpágina fora do ar\t2026-11-21\n"
+        "2026-11-23\tportabilidade-especial.html\tHTTP 000\t2026-11-23\n",
+        encoding="utf-8",
+    )
+    assert [(f["fonte"], f["dia"], f["desde"]) for f in snapshots.falhas(tree)] == [
+        ("listas RN 623", "2026-11-23", "2026-11-21"),
+        ("portabilidade-especial.html", "2026-11-23", "2026-11-23"),
     ]
 
 

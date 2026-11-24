@@ -17,13 +17,21 @@ trap 'rm -rf "$tmp"' EXIT
 ua="ans-feeds/0 (+https://github.com/vasfvitor/ans-feeds)"
 ftp=https://dadosabertos.ans.gov.br/FTP/PDA
 govbr=https://www.gov.br/ans/pt-br
-# RAIZ/FALHAS.tsv: as fontes que falharam nesta execução (dia, nome, motivo), reescrito a cada vez
-# e vazio quando nada falha; o build publica isso para o portal dizer qual fonte não atualizou.
+# RAIZ/FALHAS.tsv: as fontes que falharam nesta execução (dia, nome, motivo, desde), reescrito a cada
+# vez e vazio quando nada falha; o build publica isso para o portal dizer qual fonte não atualizou.
+# "desde" é o primeiro dia da sequência de falhas da fonte: vem da linha da mesma fonte no arquivo da
+# execução anterior (FALHAS_ANTERIOR, padrão RAIZ/FALHAS.tsv; numa linha antiga de três colunas, o
+# dia dela). Uma fonte que deu certo sai do arquivo, e a próxima falha começa outra sequência.
 lista_falhas=$tmp/falhas.tsv
 : > "$lista_falhas"
+falhas_anteriores=$tmp/falhas_anteriores.tsv
+cp "${FALHAS_ANTERIOR:-$raiz/FALHAS.tsv}" "$falhas_anteriores" 2>/dev/null || : > "$falhas_anteriores"
 falhou() {
   echo "FALHA: $1 ($2)" >&2
-  printf '%s\t%s\t%s\n' "$dia" "$1" "$2" >> "$lista_falhas"
+  local desde
+  desde=$(awk -F'\t' -v n="$1" -v d="$dia" \
+    '$2 == n {s = (NF >= 4 && $4 != "") ? $4 : $1; print (s < d ? s : d); exit}' "$falhas_anteriores")
+  printf '%s\t%s\t%s\t%s\n' "$dia" "$1" "$2" "${desde:-$dia}" >> "$lista_falhas"
 }
 # a fonte que não foi atualizada nesta execução fica com a linha anterior do estado
 manter_anterior() {

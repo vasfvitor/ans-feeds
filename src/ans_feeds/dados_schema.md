@@ -57,9 +57,11 @@ precisa de tudo de uma vez; para uma operadora só, use o arquivo individual.
 ## `../meta.json`
 
 Além da data e das contagens, `falhas` lista as fontes que a última coleta não conseguiu atualizar:
-`{dia, fonte, motivo, assunto}`, com `fonte` como o nome do arquivo ou da página da ANS e `assunto` como a
-chave de `fontes` das operadoras (`cadastro`, `reclamacoes`, `idss`, `ressarcimento`, …), ou `null` quando a
-fonte não aparece nas páginas. Quando a coleta parou no meio sem dizer qual fonte falhou, a lista traz uma
+`{dia, fonte, motivo, desde, assunto}`, com `fonte` como o nome do arquivo ou da página da ANS e `assunto`
+como a chave de `fontes` das operadoras (`cadastro`, `reclamacoes`, `idss`, `ressarcimento`, …), ou `null`
+quando a fonte não aparece nas páginas. `dia` é o dia da coleta que falhou e `desde` (`AAAA-MM-DD`, como
+`dia`) é o primeiro dia da sequência de coletas em que essa fonte falhou sem interrupção: uma coleta que
+consegue baixar a fonte encerra a sequência. Chave nova, opcional para quem lê: sem ela, vale `dia`. Quando a coleta parou no meio sem dizer qual fonte falhou, a lista traz uma
 linha com `fonte` igual a `algumas fontes (a coleta parou no meio)` e `assunto` `null`, para ser mostrada
 como está. Lista vazia quando tudo foi atualizado. Os números dessas fontes são os da
 última versão coletada. Um arquivo novo com menos da metade do tamanho anterior conta como falha e não

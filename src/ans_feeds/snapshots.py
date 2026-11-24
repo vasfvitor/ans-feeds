@@ -41,15 +41,18 @@ def versions(root: Path, name: Nome) -> list[tuple[str, Path]]:
 
 def falhas(root: Path) -> list[dict]:
     """The sources the last snapshot run could not update, from FALHAS.tsv (written by
-    scripts/snapshot.sh): [{dia, fonte, motivo}], empty when none failed or the file is absent."""
+    scripts/snapshot.sh): [{dia, fonte, motivo, desde}], empty when none failed or the file is
+    absent. `desde` is the first day of the source's current run of failures; a row written before
+    that column existed reads as failing since its own day."""
     path = Path(root) / "FALHAS.tsv"
     if not path.is_file():
         return []
     out = []
     for linha in path.read_text(encoding="utf-8").splitlines():
         if linha.strip():
-            dia, fonte, motivo = linha.split("\t", 2)
-            out.append({"dia": dia, "fonte": fonte, "motivo": motivo})
+            dia, fonte, motivo, *resto = linha.split("\t")
+            desde = resto[0] if resto and resto[0] else dia
+            out.append({"dia": dia, "fonte": fonte, "motivo": motivo, "desde": desde})
     return out
 
 
