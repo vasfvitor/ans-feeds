@@ -35,6 +35,14 @@ def test_events_from_fixture_heads(tree):
     assert first.data == date(2003, 12, 19)
     assert first.detalhes["Motivo"] == "Pedido de cancelamento"
     assert "Telefone" not in first.detalhes and "E-mail" not in first.detalhes
+    # the situation is dated by the copy of the file it comes from, never "hoje"
+    assert {(k, v) for e in regs for k, v in e.detalhes.items() if k.startswith("Situação")} == {
+        ("Situação no cadastro de 22/10/2026", "ativa"),
+        ("Situação no cadastro de 22/10/2026", "cancelada"),
+    }
+    assert {e.arquivo for e in regs} == {eventos.ATIVAS, eventos.CANCELADAS}
+    assert {e.arquivo for e in canc} == {eventos.CANCELADAS}
+    assert {e.arquivo for e in dt} == {eventos.DIRECAO_TECNICA}
     x = next(e for e in dt if e.chave.endswith("/X00002"))
     assert x.registro is None and x.chave == "156/X00002"
     # baseline only: nobody has a collection time

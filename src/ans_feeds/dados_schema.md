@@ -6,7 +6,7 @@ fonte de cada número: nenhuma nota ou rótulo próprio. Datas em ISO (`AAAA-MM-
 
 ## Versão do contrato
 
-O `meta.json` da raiz e o `todas.json` trazem `schema_version`, hoje `1`, como o manifest do anvisa-api.
+O `meta.json` da raiz e o `todas.json` trazem `schema_version` (`1` nesta versão do contrato), como o manifest do anvisa-api.
 Ela só muda quando quem lê precisa mudar para continuar lendo: um campo novo não muda a versão; um campo
 que sai, muda de nome ou de sentido muda. O `operadoras.json` é uma lista e não traz a chave; vale a do
 `meta.json`. Os arquivos de antes de novembro de 2026 não têm a chave.
@@ -63,10 +63,12 @@ quando a fonte não aparece nas páginas. `dia` é o dia da coleta que falhou e 
 `dia`) é o primeiro dia da sequência de coletas em que essa fonte falhou sem interrupção: uma coleta que
 consegue baixar a fonte encerra a sequência. Chave nova, opcional para quem lê: sem ela, vale `dia`. Quando a coleta parou no meio sem dizer qual fonte falhou, a lista traz uma
 linha com `fonte` igual a `algumas fontes (a coleta parou no meio)` e `assunto` `null`, para ser mostrada
-como está. Lista vazia quando tudo foi atualizado. Os números dessas fontes são os da
+como está, e repete as linhas de fonte da coleta anterior, com o `dia` e o `desde` delas. `motivo` é o
+texto do `snapshot.sh` (`HTTP <código>`, `erro <N> do curl`, `nenhum PDF na página`…), não uma
+frase para o visitante. Lista vazia quando tudo foi atualizado. Os números dessas fontes são os da
 última versão coletada. Um arquivo novo com menos da metade do tamanho anterior conta como falha e não
-substitui o anterior. `cadop_last_modified` é o Last-Modified do cadastro de operadoras (ISO 8601, UTC): a
-ANS o atualiza todo dia útil.
+substitui o anterior. `cadop_last_modified` é o Last-Modified do cadastro de operadoras (ISO 8601, UTC) na
+última coleta que o baixou.
 
 ## `tabelas/`
 

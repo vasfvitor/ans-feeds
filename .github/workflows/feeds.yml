@@ -44,6 +44,9 @@ jobs:
       diff: ${{ steps.diff.outcome }}                # read by the cadop-diff job
       antes: ${{ steps.antes.outputs.dia }}          # the data's date before this run (portal lag)
       dia: ${{ steps.day.outputs.day }}              # the collection's day, for the build's notice
+      # the generic notice: only when the collection stopped halfway or did not reach main; a red
+      # alarm step after the push (an API error in alerta) does not put it on every page
+      incompleta: ${{ steps.snapshot.outputs.parou == 'true' || steps.push.outcome != 'success' }}
     permissions:
       contents: write   # commit the snapshot
       issues: write     # the alarm issue (alerta)
@@ -60,7 +63,9 @@ jobs:
       # script that stops before rewriting it leaves no line of its own for the day, even on a second
       # run that day; this step then writes one (PAROU), and meta.json says the collection is partial.
       # The previous run's file is kept aside for snapshot.sh: a source still failing keeps its first
-      # failure day (column 4, desde).
+      # failure day (column 4, desde). A run that stops halfway names no source, so it carries the
+      # previous run's source rows (with their own day and desde) next to the PAROU row: without
+      # them the next run would restart every failing source's desde.
       - id: snapshot
         name: Snapshot
         env:
@@ -75,6 +80,7 @@ jobs:
             if ! awk -F'\t' -v d="$DAY" '$1 == d {f = 1} END {exit !f}' snapshots/FALHAS.tsv; then
               printf '%s\t%s\t%s\t%s\n' "$DAY" "$PAROU" "snapshot.sh terminou com erro sem dizer qual fonte" "$DAY" \
                 >> snapshots/FALHAS.tsv
+              awk -F'\t' -v p="$PAROU" '$2 != p' "$FALHAS_ANTERIOR" >> snapshots/FALHAS.tsv
               echo "parou=true" >> "$GITHUB_OUTPUT"
             fi
           fi
@@ -105,6 +111,7 @@ jobs:
           retention-days: 90
           if-no-files-found: ignore
       - name: Commit and push the snapshot
+        id: push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -181,6 +188,7 @@ jobs:
     outputs:
       date: ${{ steps.estado.outputs.date }}
       cadop_dias: ${{ steps.estado.outputs.cadop_dias }}
+      cadop_lm: ${{ steps.estado.outputs.cadop_lm }}
       # no snapshot job (build_only, push): this run published no new date
       referencia: ${{ needs.snapshot.outputs.antes || steps.estado.outputs.date }}
     steps:
@@ -193,15 +201,16 @@ jobs:
           enable-cache: true
       - run: uv sync --locked
       # A failed source is named by the build itself, from FALHAS.tsv (meta.json falhas), on the
-      # pages built from it. This generic notice is only for a snapshot job that failed as a whole
-      # (stopped halfway, push failed): what is committed may not say what went wrong.
+      # pages built from it. This generic notice is only for a collection that stopped halfway or
+      # did not reach main (incompleta): what is committed may not say what went wrong. Empty when
+      # there was no snapshot job (build_only, push).
       - name: Build the site
         env:
-          SNAPSHOT: ${{ needs.snapshot.result }}
+          INCOMPLETA: ${{ needs.snapshot.outputs.incompleta }}
           DIA: ${{ needs.snapshot.outputs.dia }}
         run: |
           extra=()
-          if [ "$SNAPSHOT" = failure ]; then
+          if [ "$INCOMPLETA" = true ]; then
             data=$(date -d "${DIA:-$(TZ=America/Sao_Paulo date +%F)}" +%d/%m/%Y)
             extra=(--notice "A coleta de $data falhou; o que aparece aqui vem da última coleta que deu certo em cada fonte.")
           fi
@@ -212,6 +221,7 @@ jobs:
         id: estado
         run: |
           jq -r '"date=\(.date)",
+                 "cadop_lm=\(.cadop_last_modified // "")",
                  "cadop_dias=\(if .cadop_last_modified then (now - (.cadop_last_modified | fromdateiso8601)) / 86400 | floor else "" end)"' \
             site/meta.json >> "$GITHUB_OUTPUT"
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9   # v5.0.0
@@ -248,10 +258,14 @@ jobs:
           DATE: ${{ needs.build.outputs.date }}
           REFERENCIA: ${{ needs.build.outputs.referencia }}
           CADOP_DIAS: ${{ needs.build.outputs.cadop_dias }}
+          CADOP_LM: ${{ needs.build.outputs.cadop_lm }}
           PORTAL: https://saude.abelhaninja.de/build.json
         run: |
           falhou=0
           echo "CADOP: Last-Modified ${CADOP_DIAS:-?} days ago"
+          # the issue bodies give dates as DD/MM/AAAA; an empty or bad one stays as it is
+          br() { [ -n "$1" ] && date -ud "$1" +%d/%m/%Y 2>/dev/null || printf '%s' "$1"; }
+          conferido=$(TZ=America/Sao_Paulo date +%d/%m/%Y)
           dia='^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
           ref=$REFERENCIA
           [[ "$ref" =~ $dia ]] || ref=$DATE
@@ -273,7 +287,7 @@ jobs:
               if [ "$CADOP_DIAS" -gt 7 ]; then echo "cadop_estado=ativo"; else echo "cadop_estado=normal"; fi
             fi
             echo "cadop_titulo=CADOP parado na ANS há $CADOP_DIAS dias"
-            echo "cadop_corpo=O CADOP, o cadastro das operadoras que a ANS publica todo dia, não muda há $CADOP_DIAS dias. O site segue com o último CADOP publicado."
+            echo "cadop_corpo=O CADOP (Relatorio_cadop.csv, o cadastro de operadoras ativas da ANS) tem Last-Modified de $(br "$CADOP_LM") na última coleta que o baixou: $CADOP_DIAS dias sem mudança até $conferido, dia desta verificação. O site segue com a última versão coletada."
             if [ "$falhou" -eq 1 ]; then
               :  # not measured: the portal issue stays as it is
             elif [ -z "$atraso" ] || [ "$atraso" -gt 2 ]; then
@@ -286,7 +300,7 @@ jobs:
               echo "portal_corpo=Não deu para ler $PORTAL. O portal pode estar fora do ar ou sem certificado."
             else
               echo "portal_titulo=Portal $atraso dias atrás dos dados da ANS"
-              echo "portal_corpo=O portal (saude.abelhaninja.de) está com os dados da ANS de $portal, $atraso dias antes de $ref, a data que estes dados já tinham antes deste run (hoje são de $DATE). Ele lê estes dados e deveria estar no máximo 2 dias atrás."
+              echo "portal_corpo=O portal (saude.abelhaninja.de) está com os dados da ANS de $(br "$portal"), $atraso dias antes de $(br "$ref"), a data que estes dados já tinham antes deste run (depois dele, são de $(br "$DATE")). Ele lê estes dados e deveria estar no máximo 2 dias atrás."
             fi
           } >> "$GITHUB_OUTPUT"
           if [ -n "$CADOP_DIAS" ] && [ "$CADOP_DIAS" -gt 7 ]; then

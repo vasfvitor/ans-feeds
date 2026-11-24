@@ -32,6 +32,8 @@ class Evento:
     registro: str | None
     detalhes: dict[str, str] = field(default_factory=dict)
     fonte: str = ""
+    # the snapshot name of the source (ATIVAS, …): it names the link to `fonte`
+    arquivo: str = ""
     link: str | None = None
     destaque: bool = False
     visto_em: datetime | None = None
@@ -114,6 +116,7 @@ def cancelamentos(root: Path) -> list[Evento]:
                     "Registro na ANS desde": r["DATA_REGISTRO_ANS"],
                 },
                 fonte=fonte,
+                arquivo=CANCELADAS,
                 destaque=motivo == LIQUIDACAO,
             )
         )
@@ -132,6 +135,8 @@ def registros(root: Path) -> list[Evento]:
         if not path:
             continue
         fonte = source_url(root, name)
+        # the situation as of this copy of the file, never "today"
+        rotulo = f"Situação no cadastro de {date.fromisoformat(path.parent.name):%d/%m/%Y}"
         for r in rows(path):
             chave = _registro_chave(r)
             if not chave:
@@ -144,8 +149,9 @@ def registros(root: Path) -> list[Evento]:
                     titulo=f"Novo registro: {r['RAZAO_SOCIAL'].strip()}",
                     nome=r["RAZAO_SOCIAL"].strip(),
                     registro=chave,
-                    detalhes={**_cadop_detalhes(r), "Situação hoje": situacao},
+                    detalhes={**_cadop_detalhes(r), rotulo: situacao},
                     fonte=fonte,
+                    arquivo=name,
                 )
             )
     return _with_seen(root, ATIVAS, out, _registro_chave)
@@ -177,6 +183,7 @@ def direcao_tecnica(root: Path) -> list[Evento]:
                 registro=registro(r["REGISTRO_OPERADORA"]),
                 detalhes={"Resolução Operacional": ro, "UF": r["UF"].strip()},
                 fonte=fonte,
+                arquivo=DIRECAO_TECNICA,
             )
         )
     return _with_seen(root, DIRECAO_TECNICA, out, _dt_chave)

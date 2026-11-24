@@ -33,6 +33,21 @@ falhou() {
     '$2 == n {s = (NF >= 4 && $4 != "") ? $4 : $1; print (s < d ? s : d); exit}' "$falhas_anteriores")
   printf '%s\t%s\t%s\t%s\n' "$dia" "$1" "$2" "${desde:-$dia}" >> "$lista_falhas"
 }
+# Downloads a page or directory listing ($1) to $2. On failure it returns 1 and leaves the real
+# cause in $motivo: "erro N do curl" when there was no HTTP answer (35: the TLS connection was
+# reset; 28: timeout), "HTTP N" when the server answered something other than 200.
+abrir() {
+  local code rc=0
+  code=$(curl -sS --max-time 120 -A "$ua" -o "$2" -w '%{http_code}' "$1") || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    motivo="erro $rc do curl"
+    return 1
+  fi
+  if [ "$code" != 200 ]; then
+    motivo="HTTP $code"
+    return 1
+  fi
+}
 # a fonte que não foi atualizada nesta execução fica com a linha anterior do estado
 manter_anterior() {
   awk -F'\t' -v n="$1" '$1 == n' "$estado" >> "$novo_estado"
@@ -54,7 +69,7 @@ EOF
 
 # PDFs das listas RN 623: os nomes mudam a cada trimestre, então vêm dos links da página.
 lista=$govbr/assuntos/informacoes-e-avaliacoes-de-operadoras/lista-excelencia-e-reducao-das-reclamacoes-das-operadoras
-if curl -sS --fail --max-time 120 -A "$ua" -o "$tmp/lista.html" "$lista"; then
+if abrir "$lista" "$tmp/lista.html"; then
   pdfs=$(sed -n 's/.*href="\(https:\/\/www\.gov\.br\/ans\/[^"]*Lista[^"]*\.pdf\)".*/\1/p' "$tmp/lista.html" | sort -u)
   # uma página em manutenção ou redesenhada responde 200 sem nenhum link: não é "nada novo"
   [ -z "$pdfs" ] && falhou "listas RN 623" "nenhum PDF na página"
@@ -62,15 +77,15 @@ if curl -sS --fail --max-time 120 -A "$ua" -o "$tmp/lista.html" "$lista"; then
     [ -n "$url" ] && fontes+=$'\n'"${url##*/}"$'\t'"$url"$'\t'sim
   done <<< "$pdfs"
 else
-  falhou "listas RN 623" "página fora do ar"
+  falhou "listas RN 623" "$motivo"
 fi
 
 # Arquivos cujo nome muda com o tempo: pegos no diretório, o mais recente em ordem de nome.
 #   mais_recente <url do diretório> <padrão ERE do nome> <rótulo para FALHAS.tsv>
 mais_recente() {
   local dir=$1 padrao=$2 rotulo=$3 arq
-  if ! curl -sS --fail --max-time 120 -A "$ua" -o "$tmp/dir.html" "$dir/"; then
-    falhou "$rotulo" "diretório fora do ar"
+  if ! abrir "$dir/" "$tmp/dir.html"; then
+    falhou "$rotulo" "$motivo"
     return
   fi
   arq=$(sed -nE "s/.*href=\"($padrao)\".*/\1/p" "$tmp/dir.html" | sort | tail -1)
@@ -99,8 +114,13 @@ while IFS=$'\t' read -r nome url guardar; do
   IFS=$'\t' read -r lm_ant sha_ant bytes_ant snap_ant < <(awk -F'\t' -v n="$nome" '$1 == n {print $3 "\t" $4 "\t" $5 "\t" $6}' "$estado") || true
   cond=()
   [ -n "${lm_ant:-}" ] && [ "$lm_ant" != "-" ] && cond=(-H "If-Modified-Since: $lm_ant")
-  if ! code=$(curl -sS --max-time 600 -A "$ua" "${cond[@]}" -D "$tmp/h" -o "$tmp/corpo" -w '%{http_code}' "$url"); then
-    code=000
+  rc=0
+  code=$(curl -sS --max-time 600 -A "$ua" "${cond[@]}" -D "$tmp/h" -o "$tmp/corpo" -w '%{http_code}' "$url") || rc=$?
+  # no HTTP answer, or one cut short: curl's exit code is the cause (the headers may be missing)
+  if [ "$rc" -ne 0 ]; then
+    falhou "$nome" "erro $rc do curl"
+    manter_anterior "$nome"
+    continue
   fi
   # O proxy pode antepor a resposta do CONNECT: vale o último bloco de cabeçalhos.
   lm=$(tr -d '\r' < "$tmp/h" | awk '{l = tolower($0)} l ~ /^http\// {lm = "-"} l ~ /^last-modified:/ {sub(/^[^:]*: */, ""); lm = $0} END {print (lm == "" ? "-" : lm)}')

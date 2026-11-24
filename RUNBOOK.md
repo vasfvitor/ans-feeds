@@ -13,7 +13,7 @@ Quem cria ou muda um alarme ou uma mensagem de erro atualiza este arquivo no mes
 
 | Workflow / job | Trecho da mensagem | Entrada |
 |---|---|---|
-| feeds / snapshot | issue "Fonte da ANS falhou", `FALHA:`, `HTTP`, `fora do ar`, `nenhum` | [Fonte da ANS falhou](#fonte-da-ans-falhou) |
+| feeds / snapshot | issue "Fonte da ANS falhou", `FALHA:`, `HTTP`, `do curl`, `fora do ar`, `nenhum` | [Fonte da ANS falhou](#fonte-da-ans-falhou) |
 | feeds / snapshot | `stopped halfway` | [Coleta parou no meio](#coleta-parou-no-meio) |
 | feeds / snapshot | `bytes contra`, `na versão anterior` | [Arquivo da ANS encolheu](#arquivo-da-ans-encolheu) |
 | feeds / cadop-diff | `cadop_diff.py failed`; `Traceback` em "CADOP diff" | [Diff do CADOP quebrou](#diff-do-cadop-quebrou) |
@@ -37,6 +37,11 @@ jobs:
 
 Uma fonte fora do ar não impede as outras: o que foi baixado é commitado.
 
+O aviso geral "A coleta de <DD/MM/AAAA> falhou; o que aparece aqui vem da última coleta que deu certo em
+cada fonte." só sai em todas as páginas quando a coleta parou no meio ou não chegou ao `main` (push do
+snapshot falhou ou nem rodou). Um passo vermelho depois do push, como a issue de alerta que não abriu por
+um erro da API do GitHub, não põe o aviso.
+
 Três causas de fora do código não deixam o run vermelho: abrem uma issue com o label `alerta`, que fecha
 sozinha quando a situação normaliza (ver o RUNBOOK do hub, "Issues de alerta"). São elas: uma fonte da
 ANS que falhou, o CADOP parado e o portal atrasado. O run fica verde, com um aviso amarelo.
@@ -51,20 +56,31 @@ só remonta o site, sem baixar nada.
   snapshot (passo "Alarm issue for the sources that failed"). O run fica verde. No log do passo
   Snapshot, a linha `FALHA: <fonte> (<motivo>)`.
 - **Motivos possíveis:**
-  - `HTTP <código>`: `HTTP 000` quer dizer erro de rede ou tempo esgotado;
-  - `página fora do ar` ou `nenhum PDF na página` (listas da RN 623);
-  - `diretório fora do ar` ou `nenhum arquivo no diretório` (ressarcimento, IDSS).
+  - `HTTP <código>`: o servidor respondeu, mas não com o arquivo (por exemplo, `HTTP 404`, `HTTP 503`);
+  - `erro <N> do curl`: não houve resposta HTTP, e `N` é o código de saída do `curl`. `erro 35 do curl` é
+    a conexão segura cortada no meio (o `www.gov.br` faz isso com os servidores do GitHub desde
+    21/11/2026: listas da RN 623 e página de portabilidade); `erro 28 do curl` é tempo esgotado;
+  - `nenhum PDF na página` (listas da RN 623) ou `nenhum arquivo no diretório` (ressarcimento, IDSS);
+  - `HTTP 000`, `página fora do ar` e `diretório fora do ar` só aparecem em linhas gravadas antes de
+    24/11/2026, quando o script ainda não guardava a causa.
 - **O que quer dizer:** essa fonte não respondeu como devia. Ela fica com a versão anterior; as outras
   foram baixadas e commitadas.
 - **O site foi afetado?** Saiu com a versão anterior dessa fonte. O build lê `snapshots/FALHAS.tsv` e
   põe um aviso só nas páginas montadas com essa fonte e no índice, que lista todas, por exemplo:
   "Página da ANS de operadoras em portabilidade especial: a coleta deste site falha desde 21/11/2026
-  (em 24/11/2026, o site da ANS não respondeu à coleta). O que vem dessa fonte é da última coleta que
-  deu certo, antes de 21/11/2026." No primeiro dia, "falhou em <dia> (<motivo>)". Na página de
-  portabilidade, a caixa acima da lista diz o mesmo: "A coleta deste site não consegue baixar a página
-  de portabilidade da ANS desde <desde> (…). A versão usada aqui é a da última coleta que deu certo,
-  antes de <desde>; nela, a ANS diz ter atualizado a página em <data>. Portabilidades decretadas depois
-  podem já estar na página da ANS sem aparecer aqui." O `meta.json` lista a fonte em `falhas`, com
+  (em 24/11/2026, a conexão segura com o site da ANS foi interrompida (erro 35 do curl)). O que vem
+  dessa fonte é a cópia da coleta de <DD/MM/AAAA>, a última versão baixada." No primeiro dia, "falhou
+  em <dia> (<motivo>)". Uma fonte sem cópia guardada (o arquivo de penalidades) termina com "é da
+  última coleta que deu certo, antes de <desde>". O motivo aparece em palavras: `HTTP 503` vira "o site
+  da ANS respondeu com o erro HTTP 503"; `erro 28 do curl`, "o site da ANS não respondeu dentro do tempo
+  limite da coleta (erro 28 do curl)"; um código do `curl` sem frase própria e as linhas antigas
+  (`HTTP 000`, `fora do ar`), "a coleta não conseguiu abrir a página da ANS". A página de portabilidade
+  também mostra as falhas do cadastro de operadoras (ativas e canceladas), que liga cada operadora da
+  lista ao seu registro. Na página de portabilidade, a caixa acima da lista diz o mesmo da página da
+  ANS: "A coleta deste site não consegue baixar a página de portabilidade da ANS desde <desde> (…). A
+  versão usada aqui é a cópia da coleta de <DD/MM/AAAA>; nela, a ANS diz ter atualizado a página em
+  <data>. Portabilidades decretadas depois podem já estar na página da ANS sem aparecer aqui." O
+  `meta.json` lista a fonte em `falhas`, com
   `desde`, o primeiro dia da sequência de falhas (o `snapshot.sh` o copia da linha da mesma fonte no
   `FALHAS.tsv` anterior), e o portal mostra que esses números são da coleta anterior.
 - **Agir ou esperar:** esperar. O run do dia seguinte tenta de novo, e a issue fecha sozinha no primeiro
@@ -78,11 +94,13 @@ só remonta o site, sem baixar nada.
 - **Mensagem:** `::error::snapshot.sh failed on <dia> without naming a source: it stopped halfway`
 - **O que quer dizer:** o `snapshot.sh` terminou com erro, mas sem registrar nenhuma fonte que falhou
   naquele dia. Ele parou no meio por um erro inesperado, um problema no script.
-- **O site foi afetado?** O que foi baixado antes do erro foi commitado. Como o job snapshot ficou
-  vermelho, todas as páginas saem com o aviso "A coleta de <DD/MM/AAAA> falhou; o que aparece aqui vem da
-  última coleta que deu certo em cada fonte." e com "A coleta de <DD/MM/AAAA> parou no meio: algumas
-  fontes podem estar com a versão da coleta anterior." O `meta.json` lista em `falhas` a linha
-  `algumas fontes (a coleta parou no meio)`, que o portal mostra como está.
+- **O site foi afetado?** O que foi baixado antes do erro foi commitado. Como a coleta parou no meio,
+  todas as páginas saem com o aviso "A coleta de <DD/MM/AAAA> falhou; o que aparece aqui vem da última
+  coleta que deu certo em cada fonte." e com "A coleta de <DD/MM/AAAA> parou no meio: algumas fontes
+  podem estar com a versão da coleta anterior." O `meta.json` lista em `falhas` a linha
+  `algumas fontes (a coleta parou no meio)`, que o portal mostra como está. O `FALHAS.tsv` guarda também
+  as linhas de fonte da coleta anterior, com o dia e o `desde` delas: os avisos dessas fontes continuam,
+  e a próxima coleta mantém o primeiro dia de falha de cada uma.
 - **Agir ou esperar:** pedir ajuda. O log do passo Snapshot mostra onde ele parou.
 
 ### Arquivo da ANS encolheu

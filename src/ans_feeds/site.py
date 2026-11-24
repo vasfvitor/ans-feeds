@@ -152,8 +152,8 @@ def event_html(e: Evento) -> str:
     links = []
     if e.link:
         links.append(f'<a href="{q(e.link)}">Resolução Operacional</a>')
-    if e.fonte:
-        links.append(f'<a href="{q(e.fonte)}">fonte</a>')
+    if e.fonte:  # named, never just "fonte"
+        links.append(f'<a href="{q(e.fonte)}">{q(NOMES.get(e.arquivo, "Arquivo da ANS"))}</a>')
     return (
         f'<span class="when">{br_date(e.data)}</span>{q(e.titulo)}'
         f'<p class="det">{" · ".join(det)}{" · " if links else ""}{" · ".join(links)}</p>'
@@ -285,7 +285,8 @@ ASSUNTOS_DO_TIPO = {
     "cancelamento": {"cancelamentos"},
     "registro": {"cadastro", "cancelamentos"},
     "direcao-tecnica": {"direcao_tecnica"},
-    "portabilidade": {"portabilidade"},
+    # the CADOP files match each operator on the page to its registration (indice_cadop)
+    "portabilidade": {"portabilidade", "cadastro", "cancelamentos"},
 }
 # the row feeds.yml writes when snapshot.sh stops halfway: any source may be stale, so every page
 PAROU = "algumas fontes (a coleta parou no meio)"
@@ -295,12 +296,29 @@ def br_iso(dia: str) -> str:
     return br_date(date.fromisoformat(dia))
 
 
+# curl's exit codes that say what happened to the connection (snapshot.sh: "erro N do curl")
+ERROS_CURL = {
+    6: "o endereço do site da ANS não foi encontrado",
+    7: "a coleta não conseguiu se conectar ao site da ANS",
+    28: "o site da ANS não respondeu dentro do tempo limite da coleta",
+    35: "a conexão segura com o site da ANS foi interrompida",
+    52: "o site da ANS fechou a conexão sem responder",
+    56: "a conexão com o site da ANS caiu durante o download",
+}
+# a cause snapshot.sh did not record: older rows ("HTTP 000", "página fora do ar"), other curl codes
+SEM_CAUSA = "a coleta não conseguiu abrir a página da ANS"
+
+
 def motivo_legivel(motivo: str) -> str:
     """snapshot.sh's reason in plain words; an unknown one as it is."""
     if motivo == "HTTP 000" or motivo.endswith("fora do ar"):
-        return "o site da ANS não respondeu à coleta"
+        return SEM_CAUSA
+    if m := re.fullmatch(r"erro (\d+) do curl", motivo):
+        return f"{ERROS_CURL.get(int(m.group(1)), SEM_CAUSA)} (erro {m.group(1)} do curl)"
     if m := re.fullmatch(r"HTTP (\d{3})", motivo):
-        return f"o site da ANS respondeu com o erro HTTP {m.group(1)}"
+        if int(m.group(1)) >= 400:
+            return f"o site da ANS respondeu com o erro HTTP {m.group(1)}"
+        return f"o site da ANS respondeu com o código HTTP {m.group(1)}, sem o arquivo"
     if motivo == "nenhum PDF na página":
         return "a página da ANS veio sem nenhum PDF"
     if motivo == "nenhum arquivo no diretório":
@@ -318,6 +336,21 @@ def falha_quando(f: dict) -> str:
     return f"desde {br_iso(f['desde'])} (em {br_iso(f['dia'])}, {motivo})"
 
 
+# the stored files behind a source snapshot.sh names by a label, not by a file name
+ARQUIVOS_DO_ROTULO: dict[str, snapshots.Nome] = {
+    "listas RN 623": re.compile(r"^.*\.pdf$"),
+    "índice de ressarcimento": operadoras.RESSARCIMENTO,
+    "HC do ressarcimento": re.compile(r"^HC_\d{4}\.csv$"),
+    "histórico do IDSS": operadoras.IDSS,
+}
+
+
+def dia_da_copia(root: Path, fonte: str) -> str | None:
+    """The collection day of the newest stored copy of a source; None when none is kept."""
+    found = snapshots.versions(root, ARQUIVOS_DO_ROTULO.get(fonte, fonte))
+    return found[-1][0] if found else None
+
+
 def falha_html(f: dict, root: Path) -> str:
     """One failed source: its name, linked to its ANS address when known, the reason, since when."""
     if f["fonte"] == PAROU:
@@ -330,10 +363,15 @@ def falha_html(f: dict, root: Path) -> str:
     )
     url = ev.source_url(root, f["fonte"])
     nome = f'<a href="{q(url)}">{q(nome)}</a>' if url else q(nome)
+    copia = dia_da_copia(root, f["fonte"])
+    shown = (
+        f"é a cópia da coleta de {br_iso(copia)}, a última versão baixada"
+        if copia
+        else f"é da última coleta que deu certo, antes de {br_iso(f['desde'])}"
+    )
     return (
         f"<p>{nome}: a coleta deste site {'falhou' if f['desde'] == f['dia'] else 'falha'}"
-        f" {q(falha_quando(f))}. O que vem dessa fonte é da última coleta que deu certo, antes de"
-        f" {br_iso(f['desde'])}.</p>"
+        f" {q(falha_quando(f))}. O que vem dessa fonte {shown}.</p>"
     )
 
 
@@ -411,8 +449,9 @@ def build_site(
                 '<div class="box warn">A coleta deste site'
                 f" {'não conseguiu' if primeiro_dia else 'não consegue'} baixar a {pagina}"
                 f" {q(falha_quando(falha_port))}."
-                f" A versão usada aqui é a da última coleta que deu certo, antes de"
-                f" {br_iso(falha_port['desde'])}; nela, a ANS diz ter atualizado a página em {em}."
+                " A versão usada aqui é a cópia da coleta de"
+                f" {br_iso(dia_da_copia(snapshots_dir, portabilidade.PAGINA))}; nela, a ANS diz ter"
+                f" atualizado a página em {em}."
                 " Portabilidades decretadas depois podem já estar na página da ANS sem aparecer"
                 " aqui.</div>"
             )

@@ -184,6 +184,7 @@ def portabilidades(root: Path) -> tuple[list[Evento], datetime | None]:
                     "Publicação no DOU": linha.data.strftime("%d/%m/%Y"),
                 },
                 fonte=fonte,
+                arquivo=PAGINA,
                 link=linha.link or None,
                 visto_em=visto[1] if visto else None,
             )
