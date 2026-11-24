@@ -73,6 +73,22 @@ def test_falhas_reads_what_the_last_run_could_not_update(tree):
     ]
 
 
+def test_falhas_survives_a_tab_in_the_reason_and_a_bad_desde(tree):
+    (tree / "FALHAS.tsv").write_text(
+        "2026-11-23\ta.csv\tHTTP\t503\t2026-11-21\n"  # a tab inside the reason, then desde
+        "2026-11-23\tb.csv\tum\tdois\n"  # a three-column row whose reason has a tab
+        "2026-11-23\tc.csv\tHTTP 000\tontem\n"  # desde that is not a day
+        "2026-11-23\td.csv\tHTTP 000\t\n",  # an empty desde
+        encoding="utf-8",
+    )
+    assert [(f["fonte"], f["motivo"], f["desde"]) for f in snapshots.falhas(tree)] == [
+        ("a.csv", "HTTP\t503", "2026-11-21"),
+        ("b.csv", "um\tdois", "2026-11-23"),
+        ("c.csv", "HTTP 000\tontem", "2026-11-23"),
+        ("d.csv", "HTTP 000", "2026-11-23"),
+    ]
+
+
 def test_a_failed_source_gets_the_subject_the_portal_labels():
     from ans_feeds.site import assunto_da_fonte
 

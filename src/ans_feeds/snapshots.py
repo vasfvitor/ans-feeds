@@ -43,15 +43,22 @@ def falhas(root: Path) -> list[dict]:
     """The sources the last snapshot run could not update, from FALHAS.tsv (written by
     scripts/snapshot.sh): [{dia, fonte, motivo, desde}], empty when none failed or the file is
     absent. `desde` is the first day of the source's current run of failures; a row written before
-    that column existed reads as failing since its own day."""
+    that column existed, or whose last column is not a YYYY-MM-DD day, reads as failing since its
+    own day. A tab inside the reason stays in the reason."""
     path = Path(root) / "FALHAS.tsv"
     if not path.is_file():
         return []
     out = []
     for linha in path.read_text(encoding="utf-8").splitlines():
         if linha.strip():
-            dia, fonte, motivo, *resto = linha.split("\t")
-            desde = resto[0] if resto and resto[0] else dia
+            dia, fonte, *resto = linha.split("\t", 2)
+            motivo = resto[0] if resto else ""
+            antes, tab, ultima = motivo.rpartition("\t")
+            desde = dia
+            if tab and DAY.match(ultima):
+                motivo, desde = antes, ultima
+            elif tab and not ultima:  # an empty desde column
+                motivo = antes
             out.append({"dia": dia, "fonte": fonte, "motivo": motivo, "desde": desde})
     return out
 
