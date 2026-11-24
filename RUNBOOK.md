@@ -56,9 +56,17 @@ só remonta o site, sem baixar nada.
   - `diretório fora do ar` ou `nenhum arquivo no diretório` (ressarcimento, IDSS).
 - **O que quer dizer:** essa fonte não respondeu como devia. Ela fica com a versão anterior; as outras
   foram baixadas e commitadas.
-- **O site foi afetado?** Saiu com a versão anterior dessa fonte e o aviso "A coleta de hoje falhou em
-  parte; estes dados são da última coleta bem-sucedida de cada fonte." O `meta.json` lista a fonte em
-  `falhas`, e o portal mostra que esses números são da coleta anterior.
+- **O site foi afetado?** Saiu com a versão anterior dessa fonte. O build lê `snapshots/FALHAS.tsv` e
+  põe um aviso só nas páginas montadas com essa fonte e no índice, que lista todas, por exemplo:
+  "Página da ANS de operadoras em portabilidade especial: a coleta deste site falha desde 21/11/2026
+  (em 24/11/2026, o site da ANS não respondeu à coleta). O que vem dessa fonte é da última coleta que
+  deu certo, antes de 21/11/2026." No primeiro dia, "falhou em <dia> (<motivo>)". Na página de
+  portabilidade, a caixa acima da lista diz o mesmo: "A coleta deste site não consegue baixar a página
+  de portabilidade da ANS desde <desde> (…). A versão usada aqui é a da última coleta que deu certo,
+  antes de <desde>; nela, a ANS diz ter atualizado a página em <data>. Portabilidades decretadas depois
+  podem já estar na página da ANS sem aparecer aqui." O `meta.json` lista a fonte em `falhas`, com
+  `desde`, o primeiro dia da sequência de falhas (o `snapshot.sh` o copia da linha da mesma fonte no
+  `FALHAS.tsv` anterior), e o portal mostra que esses números são da coleta anterior.
 - **Agir ou esperar:** esperar. O run do dia seguinte tenta de novo, e a issue fecha sozinha no primeiro
   dia sem falha.
 - **Pedir ajuda quando:** a issue ficar aberta por mais de uma semana, ou o motivo for `nenhum PDF na
@@ -70,9 +78,11 @@ só remonta o site, sem baixar nada.
 - **Mensagem:** `::error::snapshot.sh failed on <dia> without naming a source: it stopped halfway`
 - **O que quer dizer:** o `snapshot.sh` terminou com erro, mas sem registrar nenhuma fonte que falhou
   naquele dia. Ele parou no meio por um erro inesperado, um problema no script.
-- **O site foi afetado?** O que foi baixado antes do erro foi commitado. O site sai com o aviso de coleta
-  com falha, e o `meta.json` lista em `falhas` a linha `algumas fontes (a coleta parou no meio)`, que o
-  portal mostra como está.
+- **O site foi afetado?** O que foi baixado antes do erro foi commitado. Como o job snapshot ficou
+  vermelho, todas as páginas saem com o aviso "A coleta de <DD/MM/AAAA> falhou; o que aparece aqui vem da
+  última coleta que deu certo em cada fonte." e com "A coleta de <DD/MM/AAAA> parou no meio: algumas
+  fontes podem estar com a versão da coleta anterior." O `meta.json` lista em `falhas` a linha
+  `algumas fontes (a coleta parou no meio)`, que o portal mostra como está.
 - **Agir ou esperar:** pedir ajuda. O log do passo Snapshot mostra onde ele parou.
 
 ### Arquivo da ANS encolheu
@@ -82,7 +92,9 @@ só remonta o site, sem baixar nada.
 - **Mensagem:** `FALHA: <fonte> (N bytes contra M na versão anterior)`
 - **O que quer dizer:** o arquivo novo tem menos da metade do tamanho do anterior. Pode ser um arquivo
   cortado ou uma página de erro. O script guarda a versão anterior.
-- **O site foi afetado?** Não. Segue com a versão anterior.
+- **O site foi afetado?** Segue com a versão anterior dessa fonte, com o aviso descrito em
+  [Fonte da ANS falhou](#fonte-da-ans-falhou) (motivo: "o arquivo novo veio com menos da metade do
+  tamanho do anterior, e foi descartado").
 - **Agir ou esperar:** esperar um dia.
 - **Pedir ajuda quando:** repetir. Se a ANS diminuiu o arquivo de verdade, não há como liberar à mão: o
   script precisa mudar. Até lá, essa fonte não atualiza.
@@ -105,9 +117,11 @@ só remonta o site, sem baixar nada.
 - **Onde aparece:** job snapshot, passo "Commit and push the snapshot", com uma saída do `git` (por
   exemplo, `CONFLICT`).
 - **O que quer dizer:** o snapshot foi baixado, mas não chegou ao `main`.
+- **O site foi afetado?** Saiu com os dados que já estavam no `main` e, em todas as páginas, o aviso
+  "A coleta de <DD/MM/AAAA> falhou; o que aparece aqui vem da última coleta que deu certo em cada fonte."
 - **O que fazer:** o snapshot fica guardado 90 dias como artifact `snapshot-<dia>` na página do run.
   1. Baixar o artifact (página do run → Artifacts).
-  2. Colocar a pasta do dia e o `ESTADO.tsv` dentro de `snapshots/`.
+  2. Colocar a pasta do dia, o `ESTADO.tsv` e o `FALHAS.tsv` dentro de `snapshots/`.
   3. Commit e push.
 - **Pedir ajuda quando:** não tiver certeza do que ficou no `main`.
 

@@ -142,3 +142,55 @@ def test_operator_feed_has_complaints_and_score(site_congelado):
     assert f"tag:{BASE_TAG}:idss/005711/2025_2024<" in text
     assert f"tag:{BASE_TAG}:reclamacoes/005711/3T2026<" in text
     assert "Reclamações de julho a setembro de 2026: " in text
+
+
+@pytest.fixture(scope="module")
+def site_falhas(tmp_path_factory, congelados):
+    """CONGELADO's snapshots with failed sources, as FALHAS.tsv had them from 2026-11-21: the RN 623
+    lists and the portability page failing for days, the active CADOP failing on its first day."""
+    root = tmp_path_factory.mktemp("falhas") / "snapshots"
+    root.mkdir()
+    for path in congelados.iterdir():
+        (root / path.name).symlink_to(path.resolve())
+    (root / "FALHAS.tsv").write_text(
+        "2026-11-05\tlistas RN 623\tpágina fora do ar\t2026-11-03\n"
+        "2026-11-05\tportabilidade-especial.html\tHTTP 000\t2026-11-03\n"
+        "2026-11-05\tRelatorio_cadop.csv\tHTTP 503\n",  # a row from before `desde`
+        encoding="utf-8",
+    )
+    out = tmp_path_factory.mktemp("site_falhas")
+    build_site(root, out, base_url=BASE_URL, base_tag=BASE_TAG, portal_url=PORTAL_URL)
+    return out
+
+
+def test_a_failed_source_is_named_on_the_pages_built_from_it(site_falhas):
+    def text(name):
+        return (site_falhas / name).read_text(encoding="utf-8")
+
+    rn623 = "Página da ANS com as listas da Resolução Normativa (RN) 623: a coleta deste site falha"
+    port = "Página da ANS de operadoras em portabilidade especial</a>: a coleta deste site falha"
+    cadop = (
+        "Cadastro de operadoras ativas da ANS (CADOP)</a>: a coleta deste site falhou em 05/11/2026"
+        " (o site da ANS respondeu com o erro HTTP 503)."
+    )
+    index = text("index.html")
+    assert rn623 in index and port in index and cadop in index
+    assert (
+        " desde 03/11/2026 (em 05/11/2026, o site da ANS não respondeu à coleta). O que vem dessa"
+        " fonte é da última coleta que deu certo, antes de 03/11/2026." in index
+    )
+    assert cadop in text("registro.html") and rn623 not in text("registro.html")
+    for name in ("cancelamento.html", "direcao-tecnica.html", "404.html"):
+        assert "a coleta deste site" not in text(name), name
+    # the portability page says it once, in the box above the list, with the page's own date
+    portabilidade = text("portabilidade.html")
+    assert port not in portabilidade and rn623 not in portabilidade
+    assert "não consegue baixar a <a href=" in portabilidade
+    assert "página de portabilidade da ANS</a> desde 03/11/2026 (em 05/11/2026," in portabilidade
+    assert "só aparecem aqui quando a ANS atualizar" not in portabilidade
+    meta = json.loads(text("meta.json"))
+    assert [(f["assunto"], f["desde"]) for f in meta["falhas"]] == [
+        ("rn623", "2026-11-03"),
+        ("portabilidade", "2026-11-03"),
+        ("cadastro", "2026-11-05"),
+    ]

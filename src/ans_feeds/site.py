@@ -101,6 +101,7 @@ def page(
     description: str,
     feed_url: str | None = None,
     notice: str | None = None,
+    falhas: str = "",
     stamp: str,
 ) -> str:
     head = [
@@ -126,6 +127,8 @@ def page(
     ]
     nav = "".join(f'<a href="{t}.html">{q(n)}</a>' for t, (n, _) in TIPOS.items())
     aviso = f'<div class="box warn">{q(notice)}</div>' if notice else ""
+    if falhas:  # already HTML (falha_html)
+        aviso += f'<div class="box warn">{falhas}</div>'
     return "".join(
         head
         + [
@@ -263,6 +266,77 @@ def assunto_da_fonte(fonte: str) -> str | None:
     return ASSUNTOS.get(fonte)
 
 
+# the failed source as the notice names it; by file or page name, then by subject
+NOMES = {
+    ev.ATIVAS: "Cadastro de operadoras ativas da ANS (CADOP)",
+    ev.CANCELADAS: "Cadastro de operadoras canceladas da ANS",
+    operadoras.IGR: "Índice Geral de Reclamações (IGR) da ANS",
+    ev.DIRECAO_TECNICA: "Arquivo da ANS de regimes especiais de direção técnica",
+    portabilidade.PAGINA: "Página da ANS de operadoras em portabilidade especial",
+    "listas RN 623": "Página da ANS com as listas da Resolução Normativa (RN) 623",
+}
+NOMES_ASSUNTO = {
+    "ressarcimento": "Arquivo da ANS de ressarcimento ao SUS",
+    "idss": "Histórico do Índice de Desempenho da Saúde Suplementar (IDSS) da ANS",
+    "rn623": "Listas da Resolução Normativa (RN) 623 da ANS",
+}
+# the subjects each event page is built from (eventos.py, portabilidade.py)
+ASSUNTOS_DO_TIPO = {
+    "cancelamento": {"cancelamentos"},
+    "registro": {"cadastro", "cancelamentos"},
+    "direcao-tecnica": {"direcao_tecnica"},
+    "portabilidade": {"portabilidade"},
+}
+# the row feeds.yml writes when snapshot.sh stops halfway: any source may be stale, so every page
+PAROU = "algumas fontes (a coleta parou no meio)"
+
+
+def br_iso(dia: str) -> str:
+    return br_date(date.fromisoformat(dia))
+
+
+def motivo_legivel(motivo: str) -> str:
+    """snapshot.sh's reason in plain words; an unknown one as it is."""
+    if motivo == "HTTP 000" or motivo.endswith("fora do ar"):
+        return "o site da ANS não respondeu à coleta"
+    if m := re.fullmatch(r"HTTP (\d{3})", motivo):
+        return f"o site da ANS respondeu com o erro HTTP {m.group(1)}"
+    if motivo == "nenhum PDF na página":
+        return "a página da ANS veio sem nenhum PDF"
+    if motivo == "nenhum arquivo no diretório":
+        return "a pasta da ANS veio sem o arquivo"
+    if re.fullmatch(r"\d+ bytes contra \d+ na versão anterior", motivo):
+        return "o arquivo novo veio com menos da metade do tamanho do anterior, e foi descartado"
+    return motivo
+
+
+def falha_quando(f: dict) -> str:
+    """'desde 21/11/2026 (em 24/11/2026, …)', or 'em 24/11/2026 (…)' on its first day."""
+    motivo = motivo_legivel(f["motivo"])
+    if f["desde"] == f["dia"]:
+        return f"em {br_iso(f['dia'])} ({motivo})"
+    return f"desde {br_iso(f['desde'])} (em {br_iso(f['dia'])}, {motivo})"
+
+
+def falha_html(f: dict, root: Path) -> str:
+    """One failed source: its name, linked to its ANS address when known, the reason, since when."""
+    if f["fonte"] == PAROU:
+        return (
+            f"<p>A coleta de {br_iso(f['dia'])} parou no meio: algumas fontes podem estar com a"
+            " versão da coleta anterior.</p>"
+        )
+    nome = (
+        NOMES.get(f["fonte"]) or NOMES_ASSUNTO.get(f["assunto"]) or f"Arquivo {f['fonte']} da ANS"
+    )
+    url = ev.source_url(root, f["fonte"])
+    nome = f'<a href="{q(url)}">{q(nome)}</a>' if url else q(nome)
+    return (
+        f"<p>{nome}: a coleta deste site {'falhou' if f['desde'] == f['dia'] else 'falha'}"
+        f" {q(falha_quando(f))}. O que vem dessa fonte é da última coleta que deu certo, antes de"
+        f" {br_iso(f['desde'])}.</p>"
+    )
+
+
 def _iso(cols: list[str] | None) -> str | None:
     """An ESTADO.tsv row's Last-Modified as ISO 8601 UTC, or None when there is none."""
     if not cols or len(cols) < 3 or cols[2] in ("", "-"):
@@ -309,15 +383,47 @@ def build_site(
     def type_entry(e: Evento) -> Entry:
         return event_entry(e, base_tag=base_tag, link=f"{base_url}/{e.tipo}.html#{anchor(e)}")
 
+    # the sources the last run could not update, with the subject the portal labels them by
+    falhas = [
+        {**f, "assunto": assunto_da_fonte(f["fonte"])} for f in snapshots.falhas(snapshots_dir)
+    ]
+    falha_port = next((f for f in falhas if f["assunto"] == "portabilidade"), None)
+
+    def avisos(assuntos: set[str] | None) -> str:
+        """The failures shown on a page built from `assuntos` (None: every one, for the index)."""
+        return "".join(
+            falha_html(f, snapshots_dir)
+            for f in falhas
+            if assuntos is None or f["fonte"] == PAROU or f["assunto"] in assuntos
+        )
+
     stale = ""
     if atualizado:
         idade = (date.fromisoformat(stamp_day) - atualizado.date()).days
-        stale = (
-            f'<div class="box{" warn" if idade > STALE_DAYS else ""}">A página de portabilidade da'
-            f" ANS foi atualizada pela última vez em {atualizado.strftime('%d/%m/%Y')}"
-            f"{f' ({idade} dias antes desta coleta)' if idade > STALE_DAYS else ''}; portabilidades"
-            " decretadas depois disso só aparecem aqui quando a ANS atualizar a página.</div>"
-        )
+        em = atualizado.strftime("%d/%m/%Y")
+        if falha_port:
+            # our download fails: the ANS may well have updated the page since
+            url = ev.source_url(snapshots_dir, portabilidade.PAGINA)
+            pagina = "página de portabilidade da ANS"
+            pagina = f'<a href="{q(url)}">{pagina}</a>' if url else pagina
+            primeiro_dia = falha_port["desde"] == falha_port["dia"]
+            stale = (
+                '<div class="box warn">A coleta deste site'
+                f" {'não conseguiu' if primeiro_dia else 'não consegue'} baixar a {pagina}"
+                f" {q(falha_quando(falha_port))}."
+                f" A versão usada aqui é a da última coleta que deu certo, antes de"
+                f" {br_iso(falha_port['desde'])}; nela, a ANS diz ter atualizado a página em {em}."
+                " Portabilidades decretadas depois podem já estar na página da ANS sem aparecer"
+                " aqui.</div>"
+            )
+        else:
+            stale = (
+                f'<div class="box{" warn" if idade > STALE_DAYS else ""}">A página de portabilidade'
+                f" da ANS foi atualizada pela última vez em {em}"
+                f"{f' ({idade} dias antes desta coleta)' if idade > STALE_DAYS else ''};"
+                " portabilidades decretadas depois disso só aparecem aqui quando a ANS atualizar a"
+                " página.</div>"
+            )
 
     for tipo, (nome, desc) in TIPOS.items():
         items = por_tipo[tipo]
@@ -348,6 +454,10 @@ def build_site(
                 description=desc,
                 feed_url=f"{base_url}/{tipo}.xml",
                 notice=notice,
+                # on the portability page the box above the list says it, with the page's date
+                falhas=avisos(
+                    ASSUNTOS_DO_TIPO[tipo] - ({"portabilidade"} if stale and falha_port else set())
+                ),
                 stamp=stamp,
             ),
         )
@@ -390,6 +500,7 @@ def build_site(
             " das operadoras de planos de saúde, como feeds Atom.",
             feed_url=f"{base_url}/geral.xml",
             notice=notice,
+            falhas=avisos(None),
             stamp=stamp,
         ),
     )
@@ -485,10 +596,7 @@ def build_site(
         "mais_recente": geral[0].data.isoformat() if geral else None,
         "portabilidade_atualizada_em": atualizado.date().isoformat() if atualizado else None,
         "operadoras": len(registros),
-        # the sources the last run could not update, with the subject the portal labels them by
-        "falhas": [
-            {**f, "assunto": assunto_da_fonte(f["fonte"])} for f in snapshots.falhas(snapshots_dir)
-        ],
+        "falhas": falhas,
         # the CADOP changes every weekday at the ANS: its age says whether the source has stopped
         "cadop_last_modified": _iso(snapshots.estado(snapshots_dir, ev.ATIVAS)),
     }
