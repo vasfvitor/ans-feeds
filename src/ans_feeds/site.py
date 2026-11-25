@@ -15,6 +15,7 @@ from collections import defaultdict
 from datetime import date, datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
+from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
 from . import eventos as ev
@@ -25,6 +26,8 @@ from .tabelas import tabelas
 
 SITE_NAME = "Eventos das operadoras de planos de saúde"
 REPO_URL = "https://github.com/vasfvitor/ans-feeds"
+# where a reader reports a problem by e-mail; the GitHub way is an issue form in REPO_URL
+RELATO_EMAIL = "ajuda@abelhaninja.de"
 GERAL_LIMIT = 100  # general feed; type pages show as many, so every general entry has an anchor
 TIPO_LIMIT = 50  # per-type feeds
 INDEX_LIMIT = 20
@@ -93,6 +96,83 @@ def br_date(d: date) -> str:
     return d.strftime("%d/%m/%Y")
 
 
+def _enc(s: str) -> str:
+    """As encodeURIComponent: every reserved character escaped, a space as %20."""
+    return quote(s, safe="")
+
+
+def relato_urls(pagina: str, item: str, titulo: str) -> tuple[str, str]:
+    """The issue-form and mailto URLs that report a problem on the page at `pagina` (absolute).
+
+    `item` names what the page is about with its identifier, empty on a page about no single item;
+    `titulo` is the page title, used in the subject when there is no item. Field ids are those of
+    .github/ISSUE_TEMPLATE/problema.yml."""
+    return relato_links(pagina, item, f"Problema em {item or titulo}")
+
+
+def relato_links(pagina: str, item: str, assunto: str) -> tuple[str, str]:
+    """relato_urls with the issue title and e-mail subject given whole."""
+    campos = [("template", "problema.yml"), ("title", assunto), ("pagina", pagina), ("item", item)]
+    issue = f"{REPO_URL}/issues/new?" + "&".join(f"{k}={_enc(v)}" for k, v in campos)
+    corpo = (
+        f"Página: {pagina}\nItem: {item}\n\nO que está errado:\n\n"
+        "O que a fonte oficial mostra (link):\n"
+    )
+    mailto = f"mailto:{RELATO_EMAIL}?subject={_enc(assunto)}&body={_enc(corpo)}"
+    return issue, mailto
+
+
+def relato_rodape(pagina: str, titulo: str) -> str:
+    """The footer's short form of the report links, for the page at `pagina` ("" leaves the form's
+    page field for the reader)."""
+    issue, mailto = relato_urls(pagina, "", titulo)
+    return _rodape_html(q(issue), q(mailto))
+
+
+def _rodape_html(issue: str, mailto: str) -> str:
+    """The footer sentence around two hrefs already escaped for HTML or XML."""
+    return (
+        f'<p>Encontrou um erro? <a href="{issue}">Relato no GitHub</a> ou'
+        f' <a href="{mailto}">{q(RELATO_EMAIL)}</a>.</p>'
+    )
+
+
+# The report links of the feed pages, as XSLT attribute value templates. XSLT 1.0 cannot
+# percent-encode, so the feed's self URL goes through the `troca` template, which escapes ":" and
+# "/"; a self URL holds no other character a query must escape (test_relato.py checks every feed).
+# Operator names may carry "&", so the item is left empty and the subject is fixed.
+_PAGINA, _ASSUNTO = "\x00pagina\x00", "\x00assunto\x00"
+ASSUNTO_FEED_OPERADORA = "Problema num feed de operadora"
+ASSUNTO_FEED = "Problema num feed"
+
+
+def _xsl_href(url: str) -> str:
+    return q(url).replace(_enc(_PAGINA), "{$pagina}").replace(_enc(_ASSUNTO), "{$assunto}")
+
+
+def _xsl_troca(var: str, origem: str, de: str, para: str) -> str:
+    return (
+        f'<xsl:variable name="{var}"><xsl:call-template name="troca">'
+        f'<xsl:with-param name="s" select="{origem}"/>'
+        f'<xsl:with-param name="de" select="\'{de}\'"/>'
+        f'<xsl:with-param name="para" select="\'{para}\'"/>'
+        "</xsl:call-template></xsl:variable>"
+    )
+
+
+_issue_xsl, _mailto_xsl = relato_links(_PAGINA, "", _ASSUNTO)
+FEED_XSL_RELATO = (
+    '<xsl:variable name="self" select="atom:feed/atom:link[@rel=\'self\']/@href"/>'
+    + _xsl_troca("sem_dois_pontos", "$self", ":", _enc(":"))
+    + _xsl_troca("pagina", "$sem_dois_pontos", "/", _enc("/"))
+    + '<xsl:variable name="assunto"><xsl:choose>'
+    f"<xsl:when test=\"contains($self, '/operadora/')\">{_enc(ASSUNTO_FEED_OPERADORA)}</xsl:when>"
+    f"<xsl:otherwise>{_enc(ASSUNTO_FEED)}</xsl:otherwise></xsl:choose></xsl:variable>"
+    f'<footer><div class="wrap">{_rodape_html(_xsl_href(_issue_xsl), _xsl_href(_mailto_xsl))}'
+    "</div></footer>"
+)
+
+
 def page(
     title: str,
     body: str,
@@ -103,7 +183,9 @@ def page(
     notice: str | None = None,
     falhas: str = "",
     stamp: str,
+    pagina_relato: str | None = None,
 ) -> str:
+    """`pagina_relato`: the page the report links name, when not `url` ("" for none)."""
     head = [
         '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width,initial-scale=1">',
@@ -137,7 +219,9 @@ def page(
             f'<main class="wrap">{aviso}{body}</main>',
             '<footer><div class="wrap">Dados abertos da ANS (dadosabertos.ans.gov.br e gov.br/ans),'
             f" coletados até {q(stamp)}. Código e histórico das coletas em "
-            f'<a href="{REPO_URL}">{REPO_URL.removeprefix("https://")}</a>.</div></footer>',
+            f'<a href="{REPO_URL}">{REPO_URL.removeprefix("https://")}</a>.'
+            f"{relato_rodape(url if pagina_relato is None else pagina_relato, title)}"
+            "</div></footer>",
             "</body></html>\n",
         ]
     )
@@ -200,7 +284,21 @@ A versão para ler no navegador está na
 </xsl:for-each>
 </ul>
 </main>
+{FEED_XSL_RELATO}
 </body></html>
+</xsl:template>
+<xsl:template name="troca">
+<xsl:param name="s"/><xsl:param name="de"/><xsl:param name="para"/>
+<xsl:choose>
+<xsl:when test="contains($s, $de)">
+<xsl:value-of select="substring-before($s, $de)"/><xsl:value-of select="$para"/>
+<xsl:call-template name="troca">
+<xsl:with-param name="s" select="substring-after($s, $de)"/>
+<xsl:with-param name="de" select="$de"/><xsl:with-param name="para" select="$para"/>
+</xsl:call-template>
+</xsl:when>
+<xsl:otherwise><xsl:value-of select="$s"/></xsl:otherwise>
+</xsl:choose>
 </xsl:template>
 </xsl:stylesheet>
 """
@@ -560,6 +658,8 @@ def build_site(
             url=f"{base_url}/404.html",
             description="Página não encontrada.",
             stamp=stamp,
+            # served for any missing path: the reader names the page in the form
+            pagina_relato="",
         ),
     )
     write("feed.xsl", FEED_XSL)

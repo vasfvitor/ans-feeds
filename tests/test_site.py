@@ -7,7 +7,14 @@ import pytest
 from conftest import OPTS, SNAPSHOTS
 
 from ans_feeds.cli import BASE_TAG, BASE_URL, PORTAL_URL
-from ans_feeds.site import SCHEMA_VERSION, TIPOS, build_site, feed_bytes, motivo_legivel
+from ans_feeds.site import (
+    RELATO_EMAIL,
+    SCHEMA_VERSION,
+    TIPOS,
+    build_site,
+    feed_bytes,
+    motivo_legivel,
+)
 
 A = "{http://www.w3.org/2005/Atom}"
 
@@ -100,7 +107,9 @@ def test_pages_show_the_notice_and_no_contact_data(site):
         html = path.read_text(encoding="utf-8")
         if path.name != "404.html":
             assert "Coleta falhou." in html
-        assert not re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", html), path.name
+        # the site's own report address is the one e-mail a page may show
+        sem_relato = html.replace(RELATO_EMAIL, "")
+        assert not re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", sem_relato), path.name
     assert 'class="box warn"' in (site / "portabilidade.html").read_text(encoding="utf-8")
 
 
