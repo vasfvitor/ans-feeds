@@ -211,8 +211,10 @@ def page(
     falhas: str = "",
     stamp: str,
     pagina_relato: str | None = None,
+    raiz: str = "",
 ) -> str:
-    """`pagina_relato`: the page the report links name, when not `url` ("" for none)."""
+    """`pagina_relato`: the page the report links name, when not `url` ("" for none). `raiz`
+    prefixes the site's own links: the site's address on a page served at other paths (404)."""
     head = [
         '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width,initial-scale=1">',
@@ -234,14 +236,14 @@ def page(
         '<meta property="og:locale" content="pt_BR">',
         f"<style>{CSS}</style></head><body>",
     ]
-    nav = "".join(f'<a href="{t}.html">{q(n)}</a>' for t, (n, _) in TIPOS.items())
+    nav = "".join(f'<a href="{q(raiz)}{t}.html">{q(n)}</a>' for t, (n, _) in TIPOS.items())
     aviso = f'<div class="box warn">{q(notice)}</div>' if notice else ""
     if falhas:  # already HTML (falha_html)
         aviso += f'<div class="box warn">{falhas}</div>'
     return "".join(
         head
         + [
-            f'<header class="site"><div class="wrap"><a class="name" href="index.html">'
+            f'<header class="site"><div class="wrap"><a class="name" href="{q(raiz)}index.html">'
             f"{q(SITE_NAME)}</a><nav>{nav}</nav></div></header>",
             f'<main class="wrap">{aviso}{body}</main>',
             '<footer><div class="wrap">Dados abertos da ANS (dadosabertos.ans.gov.br e gov.br/ans),'
@@ -686,12 +688,14 @@ def build_site(
         "404.html",
         page(
             f"Página não encontrada · {SITE_NAME}",
-            '<h1>Página não encontrada</h1><p><a href="index.html">Voltar ao início</a></p>',
+            f'<h1>Página não encontrada</h1><p><a href="{q(base_url)}/">Voltar ao início</a></p>',
             url=f"{base_url}/404.html",
             description="Página não encontrada.",
             stamp=stamp,
-            # served for any missing path: the reader names the page in the form
+            # served for any missing path (/operadora/999999.html too): the reader names the page
+            # in the form, and the links are absolute, since a relative one would follow that path
             pagina_relato="",
+            raiz=f"{base_url}/",
         ),
     )
     write("feed.xsl", FEED_XSL)

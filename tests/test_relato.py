@@ -108,6 +108,18 @@ def test_the_404_footer_leaves_the_page_for_the_reader(site_congelado):
     assert campos(mailto)["body"].startswith("Página: \r\nItem: \r\n")
 
 
+def test_the_404_links_are_absolute(site_congelado):
+    """The 404 page is served for any missing path (/operadora/999999.html too), where a relative
+    link would follow that path."""
+    html = (site_congelado / "404.html").read_text(encoding="utf-8")
+    hrefs = re.findall(r'href="([^"]*)"', html)
+    assert f'href="{BASE_URL}/index.html"' in html
+    assert f'href="{BASE_URL}/cancelamento.html"' in html
+    assert f'<a href="{BASE_URL}/">Voltar ao início</a>' in html
+    for href in hrefs:
+        assert href.startswith(("https://", "mailto:")), href
+
+
 # what feed.xsl's `troca` template does to the self URL; the only escapes it knows
 def troca_xsl(url: str) -> str:
     return url.replace(":", "%3A").replace("/", "%2F")
