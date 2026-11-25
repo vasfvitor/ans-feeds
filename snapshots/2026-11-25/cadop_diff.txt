@@ -1,0 +1,6 @@
+### Relatorio_cadop.csv (snapshots/2026-11-24 → snapshots/2026-11-25): 1101 → 1101; entraram 0, saíram 0, alterados 3
+  campos alterados: {'REGIAO_DE_COMERCIALIZACAO': 2, 'COMPLEMENTO': 1}
+  ~ 320820 {'REGIAO_DE_COMERCIALIZACAO': ('6', '5')}
+  ~ 416410 {'COMPLEMENTO': ('SALA 1104', 'SALA 1002')}
+  ~ 418218 {'REGIAO_DE_COMERCIALIZACAO': ('6', '4')}
+### Relatorio_cadop_canceladas.csv: sem versão nova em snapshots/2026-11-25
