@@ -11,6 +11,7 @@ from ans_feeds.site import (
     FEED_XSL_RELATO,
     RELATO_EMAIL,
     REPO_URL,
+    URL_XSL,
     build_site,
     q,
     relato_links,
@@ -91,13 +92,14 @@ def test_every_page_footer_reports_on_its_own_page(site_congelado):
     for path in paginas:
         html = path.read_text(encoding="utf-8")
         rodape = html[html.index("<footer>") :]
-        url = f"{BASE_URL}/" if path.name == "index.html" else f"{BASE_URL}/{path.name}"
         if path.name == "404.html":
             url = ""  # served for any missing path: its own address says nothing
+        else:
+            url = f"{BASE_URL}/{path.name.removesuffix('index.html')}"
         issue, mailto = relato_urls(url, "", html.split("<title>")[1].split("</title>")[0])
         assert "Encontrou um erro?" in rodape, path.name
-        assert issue.replace("&", "&amp;") in rodape, path.name
-        assert mailto.replace("&", "&amp;") in rodape, path.name
+        assert q(issue) in rodape, path.name
+        assert q(mailto) in rodape, path.name
 
 
 def test_the_404_footer_leaves_the_page_for_the_reader(site_congelado):
@@ -135,7 +137,7 @@ def test_every_feed_self_url_needs_only_the_escapes_the_xsl_makes(site_congelado
         if "<feed" not in texto:
             continue  # sitemap
         self_url = re.search(r'<link rel="self" href="([^"]+)"', texto).group(1)
-        assert re.fullmatch(r"[A-Za-z0-9._~:/-]+", self_url), f.name
+        assert URL_XSL.fullmatch(self_url), f.name
 
 
 def variavel_xsl(nome: str, self_url: str) -> str:

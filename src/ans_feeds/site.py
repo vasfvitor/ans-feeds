@@ -147,7 +147,7 @@ def _rodape_html(issue: str, mailto: str) -> str:
 _PAGINA, _ITEM, _ASSUNTO = "\x00pagina\x00", "\x00item\x00", "\x00assunto\x00"
 _REGISTRO = "\x00registro\x00"
 ITEM_FEED_OPERADORA = "registro ANS {registro}"
-ASSUNTO_FEED_OPERADORA = "Problema no feed da operadora de registro ANS {registro}"
+ASSUNTO_FEED_OPERADORA = f"Problema no feed da operadora de {ITEM_FEED_OPERADORA}"
 ASSUNTO_FEED = "Problema num feed"
 # the characters feed.xsl leaves as they are in a query; ":" and "/" it escapes itself
 URL_XSL = re.compile(r"[A-Za-z0-9._~:/-]+")
@@ -184,7 +184,6 @@ def _xsl_troca(var: str, origem: str, de: str, para: str) -> str:
     )
 
 
-_issue_xsl, _mailto_xsl = relato_links(_PAGINA, _ITEM, _ASSUNTO)
 FEED_XSL_RELATO = (
     '<xsl:variable name="self" select="atom:feed/atom:link[@rel=\'self\']/@href"/>'
     + _xsl_troca("sem_dois_pontos", "$self", ":", _enc(":"))
@@ -195,8 +194,9 @@ FEED_XSL_RELATO = (
     " select=\"$registro != '' and translate($registro, '0123456789', '') = ''\"/>"
     + _xsl_operadora("item", ITEM_FEED_OPERADORA, "")
     + _xsl_operadora("assunto", ASSUNTO_FEED_OPERADORA, ASSUNTO_FEED)
-    + f'<footer><div class="wrap">{_rodape_html(_xsl_href(_issue_xsl), _xsl_href(_mailto_xsl))}'
-    "</div></footer>"
+    + '<footer><div class="wrap">'
+    + _rodape_html(*map(_xsl_href, relato_links(_PAGINA, _ITEM, _ASSUNTO)))
+    + "</div></footer>"
 )
 
 
