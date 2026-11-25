@@ -26,9 +26,10 @@ Quem cria ou muda um alarme ou uma mensagem de erro atualiza este arquivo no mes
 
 ## feeds
 
-Roda todo dia às 10:30 UTC (07:30 em Brasília), meia hora depois de a ANS publicar o CADOP. Também roda,
-só com build, quando um push muda `src/`, `pyproject.toml`, `uv.lock` ou o próprio workflow. Tem três
-jobs:
+O agendamento é o cron `30 10 * * *`: um run por dia às 10:30 UTC (07:30 em Brasília). O GitHub pode
+começar um run agendado horas depois (o de 04/11/2026 começou cerca de 7 horas depois) ou pular um; a
+hora em que cada run começou está em Actions → feeds. Também roda, só com build, quando um push muda
+`src/`, `pyproject.toml`, `uv.lock` ou o próprio workflow. Tem três jobs:
 
 1. **snapshot:** `scripts/snapshot.sh` baixa o que a ANS sobrescreve (CADOP, IGR, RN 623, portabilidade,
    ressarcimento ao SUS, IDSS) e faz commit só do que mudou, em `snapshots/AAAA-MM-DD/`.
@@ -82,9 +83,10 @@ só remonta o site, sem baixar nada.
   <data>. Portabilidades decretadas depois podem já estar na página da ANS sem aparecer aqui." O
   `meta.json` lista a fonte em `falhas`, com
   `desde`, o primeiro dia da sequência de falhas (o `snapshot.sh` o copia da linha da mesma fonte no
-  `FALHAS.tsv` anterior), e o portal mostra que esses números são da coleta anterior.
-- **Agir ou esperar:** esperar. O run do dia seguinte tenta de novo, e a issue fecha sozinha no primeiro
-  dia sem falha.
+  `FALHAS.tsv` anterior), e `ultima_copia`, o dia da cópia que o site ainda usa (sem a chave quando não
+  há cópia guardada), e o portal mostra que esses números são da coleta anterior.
+- **Agir ou esperar:** esperar. O próximo run agendado tenta de novo, e a issue fecha sozinha no primeiro
+  run sem falha.
 - **Pedir ajuda quando:** a issue ficar aberta por mais de uma semana, ou o motivo for `nenhum PDF na
   página` ou `nenhum arquivo no diretório` vários dias seguidos (a ANS pode ter mudado o endereço).
 
@@ -113,7 +115,7 @@ só remonta o site, sem baixar nada.
 - **O site foi afetado?** Segue com a versão anterior dessa fonte, com o aviso descrito em
   [Fonte da ANS falhou](#fonte-da-ans-falhou) (motivo: "o arquivo novo veio com menos da metade do
   tamanho do anterior, e foi descartado").
-- **Agir ou esperar:** esperar um dia.
+- **Agir ou esperar:** esperar o próximo run agendado.
 - **Pedir ajuda quando:** repetir. Se a ANS diminuiu o arquivo de verdade, não há como liberar à mão: o
   script precisa mudar. Até lá, essa fonte não atualiza.
 
@@ -127,7 +129,7 @@ só remonta o site, sem baixar nada.
 - **O site foi afetado?** Não por este passo: o dia foi guardado e commitado, só sem o `cadop_diff.txt`.
   Mas se o formato mudou, o build costuma quebrar também (ver
   [Um arquivo da ANS mudou de formato](#um-arquivo-da-ans-mudou-de-formato)).
-- **Agir ou esperar:** pedir ajuda. O `cadop_diff.py` (em `pesquisa/scripts/`) vai quebrar todo dia
+- **Agir ou esperar:** pedir ajuda. O `cadop_diff.py` (em `pesquisa/scripts/`) vai quebrar em todo run
   enquanto o formato for o novo.
 
 ### Commit do snapshot falhou
@@ -165,7 +167,7 @@ só remonta o site, sem baixar nada.
 - **Onde aparece:** a issue "CADOP parado na ANS há N dias", aberta pelo job deploy depois do deploy. O
   run fica verde. No log do passo "Check the CADOP's age and the portal's lag":
   `the CADOP has not changed at the ANS for N days`.
-- **O que quer dizer:** a ANS publica o CADOP todo dia, e ele não muda há mais de 7 dias.
+- **O que quer dizer:** o `Last-Modified` do CADOP na ANS não muda há mais de 7 dias.
 - **O site foi afetado?** Não quebrou. Mostra o último CADOP publicado, só que velho.
 - **Agir ou esperar:** esperar. A causa está na ANS (um feriado longo também pode causar isso).
 - **Pedir ajuda quando:** a ANS voltou a publicar e a issue não fechou.

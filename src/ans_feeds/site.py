@@ -225,8 +225,10 @@ def feed_bytes(
     subtitulo: str,
     self_url: str,
     alt: str,
+    vazio: str,
     xsl_href: str = "feed.xsl",
 ) -> bytes:
+    """`vazio`: the feed's updated time when it has no entry (the data's day)."""
     # compared as instants: collection times are in UTC, act dates in Brasília time
     latest = max(entries, key=lambda x: datetime.fromisoformat(x.updated), default=None)
     return atom_feed(
@@ -235,7 +237,7 @@ def feed_bytes(
         subtitle=subtitulo,
         self_url=self_url,
         alt_url=alt,
-        updated=latest.updated if latest else "2026-10-22T00:00:00-03:00",
+        updated=latest.updated if latest else vazio,
         entries=entries,
         xsl_href=xsl_href,
     )
@@ -352,7 +354,8 @@ def dia_da_copia(root: Path, fonte: str) -> str | None:
 
 
 def falha_html(f: dict, root: Path) -> str:
-    """One failed source: its name, linked to its ANS address when known, the reason, since when."""
+    """One failed source: its name, linked to its ANS address when known, the reason, since when
+    and the day of the copy shown (`ultima_copia`)."""
     if f["fonte"] == PAROU:
         return (
             f"<p>A coleta de {br_iso(f['dia'])} parou no meio: algumas fontes podem estar com a"
@@ -363,7 +366,7 @@ def falha_html(f: dict, root: Path) -> str:
     )
     url = ev.source_url(root, f["fonte"])
     nome = f'<a href="{q(url)}">{q(nome)}</a>' if url else q(nome)
-    copia = dia_da_copia(root, f["fonte"])
+    copia = f.get("ultima_copia")
     shown = (
         f"é a cópia da coleta de {br_iso(copia)}, a última versão baixada"
         if copia
@@ -409,6 +412,7 @@ def build_site(
     geral = ordered([e for items in por_tipo.values() for e in items])[:GERAL_LIMIT]
     stamp_day = snapshots.days(snapshots_dir)[-1]
     stamp = datetime.strptime(stamp_day, "%Y-%m-%d").strftime("%d/%m/%Y")
+    vazio = f"{stamp_day}T00:00:00-03:00"
 
     if site.exists():
         shutil.rmtree(site)
@@ -421,10 +425,14 @@ def build_site(
     def type_entry(e: Evento) -> Entry:
         return event_entry(e, base_tag=base_tag, link=f"{base_url}/{e.tipo}.html#{anchor(e)}")
 
-    # the sources the last run could not update, with the subject the portal labels them by
-    falhas = [
-        {**f, "assunto": assunto_da_fonte(f["fonte"])} for f in snapshots.falhas(snapshots_dir)
-    ]
+    # the sources the last run could not update, with the subject the portal labels them by and
+    # the day of the copy still shown (absent when no copy is kept)
+    falhas = []
+    for f in snapshots.falhas(snapshots_dir):
+        f = {**f, "assunto": assunto_da_fonte(f["fonte"])}
+        if f["fonte"] != PAROU and (copia := dia_da_copia(snapshots_dir, f["fonte"])):
+            f["ultima_copia"] = copia
+        falhas.append(f)
     falha_port = next((f for f in falhas if f["assunto"] == "portabilidade"), None)
 
     def avisos(assuntos: set[str] | None) -> str:
@@ -439,29 +447,28 @@ def build_site(
     if atualizado:
         idade = (date.fromisoformat(stamp_day) - atualizado.date()).days
         em = atualizado.strftime("%d/%m/%Y")
+        copia = br_iso(dia_da_copia(snapshots_dir, portabilidade.PAGINA))
+        url = ev.source_url(snapshots_dir, portabilidade.PAGINA)
+        pagina = "página de portabilidade da ANS"
+        pagina = f'<a href="{q(url)}">{pagina}</a>' if url else pagina
         if falha_port:
             # our download fails: the ANS may well have updated the page since
-            url = ev.source_url(snapshots_dir, portabilidade.PAGINA)
-            pagina = "página de portabilidade da ANS"
-            pagina = f'<a href="{q(url)}">{pagina}</a>' if url else pagina
             primeiro_dia = falha_port["desde"] == falha_port["dia"]
             stale = (
                 '<div class="box warn">A coleta deste site'
                 f" {'não conseguiu' if primeiro_dia else 'não consegue'} baixar a {pagina}"
                 f" {q(falha_quando(falha_port))}."
-                " A versão usada aqui é a cópia da coleta de"
-                f" {br_iso(dia_da_copia(snapshots_dir, portabilidade.PAGINA))}; nela, a ANS diz ter"
+                f" A versão usada aqui é a cópia da coleta de {copia}; nela, a ANS diz ter"
                 f" atualizado a página em {em}."
                 " Portabilidades decretadas depois podem já estar na página da ANS sem aparecer"
                 " aqui.</div>"
             )
         else:
             stale = (
-                f'<div class="box{" warn" if idade > STALE_DAYS else ""}">A página de portabilidade'
-                f" da ANS foi atualizada pela última vez em {em}"
-                f"{f' ({idade} dias antes desta coleta)' if idade > STALE_DAYS else ''};"
-                " portabilidades decretadas depois disso só aparecem aqui quando a ANS atualizar a"
-                " página.</div>"
+                f'<div class="box{" warn" if idade > STALE_DAYS else ""}">A versão da {pagina}'
+                f" usada aqui é a cópia da coleta de {copia}; nela, a ANS diz ter atualizado a"
+                f" página em {em}"
+                f"{f' ({idade} dias antes de {stamp})' if idade > STALE_DAYS else ''}.</div>"
             )
 
     for tipo, (nome, desc) in TIPOS.items():
@@ -475,6 +482,7 @@ def build_site(
                 subtitulo=desc,
                 self_url=f"{base_url}/{tipo}.xml",
                 alt=f"{base_url}/{tipo}.html",
+                vazio=vazio,
             ),
         )
         body = (
@@ -510,6 +518,7 @@ def build_site(
             subtitulo="Cancelamentos, novos registros, direção técnica e portabilidade especial.",
             self_url=f"{base_url}/geral.xml",
             alt=f"{base_url}/index.html",
+            vazio=vazio,
         ),
     )
     feeds = "".join(
@@ -519,8 +528,8 @@ def build_site(
     index_body = (
         f"<h1>{q(SITE_NAME)}</h1>"
         "<p>Feeds Atom com o que acontece com as operadoras de planos de saúde registradas na ANS,"
-        " montados a partir dos dados abertos da agência e de coletas diárias. Assine num leitor de"
-        " feeds para receber cada novo evento.</p>"
+        " montados a partir dos dados abertos e das páginas da agência, coletados por este site."
+        " Assine num leitor de feeds para receber cada novo evento.</p>"
         '<ul class="feeds"><li><a href="geral.xml">geral.xml</a>: todos os eventos</li>'
         f"{feeds}</ul>"
         '<div class="box">Direção fiscal e liquidação extrajudicial ainda não estão aqui: saem em'
@@ -613,6 +622,7 @@ def build_site(
                 " portabilidade especial, reclamações de cada trimestre e nota anual da ANS.",
                 self_url=o["feed"],
                 alt=link,
+                vazio=vazio,
                 xsl_href="../feed.xsl",
             ),
         )

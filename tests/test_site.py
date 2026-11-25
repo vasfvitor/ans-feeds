@@ -4,13 +4,12 @@ from collections import Counter
 from xml.etree import ElementTree as ET
 
 import pytest
-from conftest import SNAPSHOTS
+from conftest import OPTS, SNAPSHOTS
 
 from ans_feeds.cli import BASE_TAG, BASE_URL, PORTAL_URL
-from ans_feeds.site import SCHEMA_VERSION, TIPOS, build_site, motivo_legivel
+from ans_feeds.site import SCHEMA_VERSION, TIPOS, build_site, feed_bytes, motivo_legivel
 
 A = "{http://www.w3.org/2005/Atom}"
-OPTS = {"portal_url": PORTAL_URL, "notice": "Coleta falhou."}
 
 
 @pytest.fixture(scope="module")
@@ -18,14 +17,6 @@ def site(tmp_path_factory):
     """Built from today's snapshots: only invariants are checked on it."""
     out = tmp_path_factory.mktemp("site")
     build_site(SNAPSHOTS, out, base_url=BASE_URL, base_tag=BASE_TAG, **OPTS)
-    return out
-
-
-@pytest.fixture(scope="module")
-def site_congelado(tmp_path_factory, congelados):
-    """Built from the snapshots as of CONGELADO, for events and values checked by hand."""
-    out = tmp_path_factory.mktemp("site_congelado")
-    build_site(congelados, out, base_url=BASE_URL, base_tag=BASE_TAG, **OPTS)
     return out
 
 
@@ -144,26 +135,6 @@ def test_operator_feed_has_complaints_and_score(site_congelado):
     assert "Reclamações de julho a setembro de 2026: " in text
 
 
-@pytest.fixture(scope="module")
-def site_falhas(tmp_path_factory, congelados):
-    """CONGELADO's snapshots with failed sources, as FALHAS.tsv would have them on 2026-11-07, a run
-    that stored nothing new: the RN 623 lists and the portability page failing since 2026-11-05
-    (the page was last stored on 2026-11-04), the active CADOP failing on its first day."""
-    root = tmp_path_factory.mktemp("falhas") / "snapshots"
-    root.mkdir()
-    for path in congelados.iterdir():
-        (root / path.name).symlink_to(path.resolve())
-    (root / "FALHAS.tsv").write_text(
-        "2026-11-07\tlistas RN 623\tpágina fora do ar\t2026-11-05\n"  # a reason with no cause
-        "2026-11-07\tportabilidade-especial.html\terro 35 do curl\t2026-11-05\n"
-        "2026-11-07\tRelatorio_cadop.csv\tHTTP 503\n",  # a row from before `desde`
-        encoding="utf-8",
-    )
-    out = tmp_path_factory.mktemp("site_falhas")
-    build_site(root, out, base_url=BASE_URL, base_tag=BASE_TAG, portal_url=PORTAL_URL)
-    return out
-
-
 def test_a_failed_source_is_named_on_the_pages_built_from_it(site_falhas):
     def text(name):
         return (site_falhas / name).read_text(encoding="utf-8")
@@ -198,11 +169,52 @@ def test_a_failed_source_is_named_on_the_pages_built_from_it(site_falhas):
     assert "A versão usada aqui é a cópia da coleta de 04/11/2026; nela, a ANS" in portabilidade
     assert "só aparecem aqui quando a ANS atualizar" not in portabilidade
     meta = json.loads(text("meta.json"))
-    assert [(f["assunto"], f["desde"]) for f in meta["falhas"]] == [
-        ("rn623", "2026-11-05"),
-        ("portabilidade", "2026-11-05"),
-        ("cadastro", "2026-11-07"),
+    assert [(f["assunto"], f["desde"], f.get("ultima_copia")) for f in meta["falhas"]] == [
+        ("rn623", "2026-11-05", "2026-10-22"),
+        ("portabilidade", "2026-11-05", "2026-11-04"),
+        ("cadastro", "2026-11-07", "2026-11-05"),
+        (None, "2026-11-06", None),
     ]
+
+
+def test_a_source_with_no_copy_has_no_copy_day(site_falhas):
+    """The penalties file is never stored: meta.json leaves `ultima_copia` out, and the index says
+    the data is older than the first failure instead of naming a copy."""
+    meta = json.loads((site_falhas / "meta.json").read_text(encoding="utf-8"))
+    (pen,) = [f for f in meta["falhas"] if f["fonte"].startswith("penalidades")]
+    assert "ultima_copia" not in pen
+    index = (site_falhas / "index.html").read_text(encoding="utf-8")
+    assert (
+        "Arquivo penalidades_aplicadas_a_operadoras.csv da ANS</a>: a coleta deste site falha desde"
+        " 06/11/2026 (em 07/11/2026, o site da ANS não respondeu dentro do tempo limite da coleta"
+        " (erro 28 do curl)). O que vem dessa fonte é da última coleta que deu certo, antes de"
+        " 06/11/2026." in index
+    )
+
+
+def test_the_portability_box_without_a_failure_dates_the_copy(site_congelado):
+    """No promise about when a new decree shows up: the day of the copy and the ANS page's own
+    date, with the age when the page is older than STALE_DAYS."""
+    html = (site_congelado / "portabilidade.html").read_text(encoding="utf-8")
+    assert "só aparecem aqui quando" not in html
+    assert (
+        "página de portabilidade da ANS</a> usada aqui é a cópia da coleta de 04/11/2026; nela, a"
+        " ANS diz ter atualizado a página em 24/02/2026 (254 dias antes de 05/11/2026).</div>"
+        in html
+    )
+
+
+def test_an_empty_feed_is_dated_by_the_data_not_by_a_fixed_day():
+    xml = feed_bytes(
+        [],
+        feed_id="tag:x,2026:f",
+        titulo="t",
+        subtitulo="s",
+        self_url="https://x/f.xml",
+        alt="https://x/f.html",
+        vazio="2026-11-24T00:00:00-03:00",
+    )
+    assert ET.fromstring(xml).findtext(f"{A}updated") == "2026-11-24T00:00:00-03:00"
 
 
 def test_a_reason_says_the_recorded_cause_and_guesses_none():

@@ -46,7 +46,7 @@ Os campos do índice, mais:
 | `eventos` | cancelamento, registro, direção técnica e portabilidade: `{tipo, id, data, titulo}`, do mais recente ao mais antigo |
 | `fontes` | URL de cada conjunto de dados usado |
 | `feed` | URL do feed Atom da operadora (`/operadora/<registro>.xml`): os eventos, uma entrada por trimestre de reclamações e uma por ano do IDSS; as entradas apontam para `https://saude.abelhaninja.de/plano/<registro>/` |
-| `fora` | indicadores que existem mas a ANS parou de atualizar |
+| `fora` | indicadores que existem mas a ANS parou de atualizar: frases prontas para mostrar, cada uma com o último período do arquivo da ANS e o dia da cópia lida (`cópia coletada em DD/MM/AAAA`) ou da conferência à mão (`conferido em DD/MM/AAAA`, para as penalidades, cujo arquivo não é guardado). Um indicador sem cópia guardada fica fora da lista |
 
 ## `todas.json`
 
@@ -61,7 +61,12 @@ Além da data e das contagens, `falhas` lista as fontes que a última coleta nã
 como a chave de `fontes` das operadoras (`cadastro`, `reclamacoes`, `idss`, `ressarcimento`, …), ou `null`
 quando a fonte não aparece nas páginas. `dia` é o dia da coleta que falhou e `desde` (`AAAA-MM-DD`, como
 `dia`) é o primeiro dia da sequência de coletas em que essa fonte falhou sem interrupção: uma coleta que
-consegue baixar a fonte encerra a sequência. Chave nova, opcional para quem lê: sem ela, vale `dia`. Quando a coleta parou no meio sem dizer qual fonte falhou, a lista traz uma
+consegue baixar a fonte encerra a sequência. Chave nova, opcional para quem lê: sem ela, vale `dia`.
+`ultima_copia` (`AAAA-MM-DD`) é o dia da coleta que guardou a versão dessa fonte que o site ainda usa. O
+snapshot só guarda um arquivo quando ele muda, então coletas posteriores que deram certo podem ter baixado
+o mesmo arquivo: é o dia da cópia, não o da última coleta que deu certo. Chave opcional: falta quando
+nenhuma cópia da fonte foi guardada (o arquivo de penalidades, por exemplo) e na linha da coleta que parou
+no meio. Quando a coleta parou no meio sem dizer qual fonte falhou, a lista traz uma
 linha com `fonte` igual a `algumas fontes (a coleta parou no meio)` e `assunto` `null`, para ser mostrada
 como está, e repete as linhas de fonte da coleta anterior, com o `dia` e o `desde` delas. `motivo` é o
 texto do `snapshot.sh` (`HTTP <código>`, `erro <N> do curl`, `nenhum PDF na página`…), não uma
