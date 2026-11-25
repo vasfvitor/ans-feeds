@@ -114,9 +114,10 @@ def relato_links(pagina: str, item: str, assunto: str) -> tuple[str, str]:
     """relato_urls with the issue title and e-mail subject given whole."""
     campos = [("template", "problema.yml"), ("title", assunto), ("pagina", pagina), ("item", item)]
     issue = f"{REPO_URL}/issues/new?" + "&".join(f"{k}={_enc(v)}" for k, v in campos)
+    # lines end in CRLF, as RFC 6068 asks of a mailto body
     corpo = (
-        f"Página: {pagina}\nItem: {item}\n\nO que está errado:\n\n"
-        "O que a fonte oficial mostra (link):\n"
+        f"Página: {pagina}\r\nItem: {item}\r\n\r\nO que está errado:\r\n\r\n"
+        "O que a fonte oficial mostra (link):\r\n"
     )
     mailto = f"mailto:{RELATO_EMAIL}?subject={_enc(assunto)}&body={_enc(corpo)}"
     return issue, mailto
@@ -132,22 +133,45 @@ def relato_rodape(pagina: str, titulo: str) -> str:
 def _rodape_html(issue: str, mailto: str) -> str:
     """The footer sentence around two hrefs already escaped for HTML or XML."""
     return (
-        f'<p>Encontrou um erro? <a href="{issue}">Relato no GitHub</a> ou'
-        f' <a href="{mailto}">{q(RELATO_EMAIL)}</a>.</p>'
+        f'<p>Encontrou um erro? <a href="{issue}">Relato no GitHub</a>'
+        " (público: não inclua dados pessoais)"
+        f' ou <a href="{mailto}">{q(RELATO_EMAIL)}</a>.</p>'
     )
 
 
 # The report links of the feed pages, as XSLT attribute value templates. XSLT 1.0 cannot
 # percent-encode, so the feed's self URL goes through the `troca` template, which escapes ":" and
-# "/"; a self URL holds no other character a query must escape (test_relato.py checks every feed).
-# Operator names may carry "&", so the item is left empty and the subject is fixed.
-_PAGINA, _ASSUNTO = "\x00pagina\x00", "\x00assunto\x00"
-ASSUNTO_FEED_OPERADORA = "Problema num feed de operadora"
+# "/"; a self URL holds no other character a query must escape (build_site refuses a base_url that
+# would). Operator names may carry "&", so an operator feed names the operator by its registro, the
+# digits of its self URL (/operadora/<registro>.xml); other feeds leave the item empty.
+_PAGINA, _ITEM, _ASSUNTO = "\x00pagina\x00", "\x00item\x00", "\x00assunto\x00"
+_REGISTRO = "\x00registro\x00"
+ITEM_FEED_OPERADORA = "registro ANS {registro}"
+ASSUNTO_FEED_OPERADORA = "Problema no feed da operadora de registro ANS {registro}"
 ASSUNTO_FEED = "Problema num feed"
+# the characters feed.xsl leaves as they are in a query; ":" and "/" it escapes itself
+URL_XSL = re.compile(r"[A-Za-z0-9._~:/-]+")
 
 
 def _xsl_href(url: str) -> str:
-    return q(url).replace(_enc(_PAGINA), "{$pagina}").replace(_enc(_ASSUNTO), "{$assunto}")
+    return (
+        q(url)
+        .replace(_enc(_PAGINA), "{$pagina}")
+        .replace(_enc(_ITEM), "{$item}")
+        .replace(_enc(_ASSUNTO), "{$assunto}")
+    )
+
+
+def _xsl_operadora(var: str, modelo: str, outro: str) -> str:
+    """An XSLT variable holding `modelo` percent-encoded, with the feed's registro in it, on an
+    operator feed, and `outro` on any other."""
+    sim = _enc(modelo.format(registro=_REGISTRO)).replace(
+        _enc(_REGISTRO), '<xsl:value-of select="$registro"/>'
+    )
+    return (
+        f'<xsl:variable name="{var}"><xsl:choose><xsl:when test="$operadora">{sim}</xsl:when>'
+        f"<xsl:otherwise>{_enc(outro)}</xsl:otherwise></xsl:choose></xsl:variable>"
+    )
 
 
 def _xsl_troca(var: str, origem: str, de: str, para: str) -> str:
@@ -160,15 +184,18 @@ def _xsl_troca(var: str, origem: str, de: str, para: str) -> str:
     )
 
 
-_issue_xsl, _mailto_xsl = relato_links(_PAGINA, "", _ASSUNTO)
+_issue_xsl, _mailto_xsl = relato_links(_PAGINA, _ITEM, _ASSUNTO)
 FEED_XSL_RELATO = (
     '<xsl:variable name="self" select="atom:feed/atom:link[@rel=\'self\']/@href"/>'
     + _xsl_troca("sem_dois_pontos", "$self", ":", _enc(":"))
     + _xsl_troca("pagina", "$sem_dois_pontos", "/", _enc("/"))
-    + '<xsl:variable name="assunto"><xsl:choose>'
-    f"<xsl:when test=\"contains($self, '/operadora/')\">{_enc(ASSUNTO_FEED_OPERADORA)}</xsl:when>"
-    f"<xsl:otherwise>{_enc(ASSUNTO_FEED)}</xsl:otherwise></xsl:choose></xsl:variable>"
-    f'<footer><div class="wrap">{_rodape_html(_xsl_href(_issue_xsl), _xsl_href(_mailto_xsl))}'
+    + '<xsl:variable name="registro"'
+    " select=\"substring-before(substring-after($self, '/operadora/'), '.xml')\"/>"
+    '<xsl:variable name="operadora"'
+    " select=\"$registro != '' and translate($registro, '0123456789', '') = ''\"/>"
+    + _xsl_operadora("item", ITEM_FEED_OPERADORA, "")
+    + _xsl_operadora("assunto", ASSUNTO_FEED_OPERADORA, ASSUNTO_FEED)
+    + f'<footer><div class="wrap">{_rodape_html(_xsl_href(_issue_xsl), _xsl_href(_mailto_xsl))}'
     "</div></footer>"
 )
 
@@ -500,6 +527,11 @@ def build_site(
     portal_url: str,
     notice: str | None = None,
 ) -> dict:
+    if not URL_XSL.fullmatch(base_url):
+        raise ValueError(
+            f"base_url {base_url!r} may hold only A-Z, a-z, 0-9 and ._~:/-"
+            " (feed.xsl escapes only ':' and '/' in the report links)"
+        )
     por_tipo: dict[str, list[Evento]] = {
         "cancelamento": ordered(ev.cancelamentos(snapshots_dir)),
         "registro": ordered(ev.registros(snapshots_dir)),

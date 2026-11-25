@@ -20,6 +20,7 @@ Quem cria ou muda um alarme ou uma mensagem de erro atualiza este arquivo no mes
 | feeds / snapshot | `git push`, `CONFLICT` | [Commit do snapshot falhou](#commit-do-snapshot-falhou) |
 | feeds / build | `changed layout`, `portabilidade.ler needs a fix` | [Página de portabilidade mudou](#página-de-portabilidade-mudou) |
 | feeds / build | `Traceback`, `KeyError`, `UnicodeDecodeError` | [Um arquivo da ANS mudou de formato](#um-arquivo-da-ans-mudou-de-formato) |
+| feeds / build, ci | `base_url`, `may hold only` | [Endereço do site recusado](#endereço-do-site-recusado) |
 | feeds / deploy | issue "CADOP parado na ANS", `the CADOP has no Last-Modified` | [CADOP parado na ANS](#cadop-parado-na-ans) |
 | feeds / deploy | issue "Portal N dias atrás" ou "O build.json do portal não abriu", `this site's meta.json has no date` | [Portal atrasado](#portal-atrasado) |
 | ci | ruff, pytest, build | [Lint, formato ou testes](#lint-formato-ou-testes) |
@@ -161,6 +162,19 @@ só remonta o site, sem baixar nada.
 - **O que quer dizer:** a ANS mudou uma coluna ou a codificação de um dos CSVs.
 - **O site foi afetado?** Nada foi publicado. O deploy anterior continua.
 - **Agir ou esperar:** pedir ajuda.
+
+### Endereço do site recusado
+
+- **Onde aparece:** job build, passo "Build the site" (ou, no ci, "Build the site from the committed
+  snapshots"), com um `Traceback`.
+- **Mensagem:** `ValueError: base_url '<endereço>' may hold only A-Z, a-z, 0-9 and ._~:/- (feed.xsl escapes only ':' and '/' in the report links)`
+- **O que quer dizer:** o endereço do site (`BASE_URL` em `src/ans_feeds/cli.py`, ou o `--base-url`
+  passado ao build) tem um caractere fora desses, como espaço, acento, `?` ou `&`. A página que mostra
+  um feed no navegador (`feed.xsl`) monta os links de "Encontrou um erro?" a partir desse endereço e
+  não sabe escapar outros caracteres; o build para antes de gerar links quebrados.
+- **O site foi afetado?** Nada foi publicado. O deploy anterior continua.
+- **Agir ou esperar:** agir. Voltar o endereço para um que só use esses caracteres (o de sempre é
+  `https://ans.feeds.abelhaninja.de`). Pedir ajuda se o endereço novo precisar mesmo do caractere.
 
 ### CADOP parado na ANS
 
