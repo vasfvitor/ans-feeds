@@ -46,11 +46,33 @@ IDSS_DIMENSOES = {
     "IDSM": "sustentabilidade no mercado",
     "IDGR": "gestão de processos e regulação",
 }
-FORA = [
-    "Taxa de resolutividade: a ANS não atualiza desde 2019-10.",
-    "Garantia de atendimento: a ANS não atualiza desde o 4º trimestre de 2024.",
-    "Penalidades aplicadas: a ANS não atualiza desde 03/2025.",
-]
+MESES = (
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro",
+)
+# the series the ANS stopped updating (`fora`): the last period is read from the stored copy
+TR = "pda-048-taxa_de_resolutividade.csv"
+GARANTIA = "monit_garantia_atendimento.csv"
+# snapshot.sh keeps only the Last-Modified and sha256 of the penalties file (41 MB), so its last
+# decision is a fact checked by hand: pesquisa/VALIDACAO.md, question 6 (DT_DECISAO_1A up to
+# 2025-03-31, NR_COMPETENCIA_CARGA 202503 on every row), on the file of Last-Modified
+# 05/10/2026 at this URL
+PENALIDADES = {
+    "url": "https://dadosabertos.ans.gov.br/FTP/PDA/penalidades_aplicadas_a_operadoras/"
+    "penalidades_aplicadas_a_operadoras.csv",
+    "ultima_decisao": "2025-03-31",
+    "conferido_em": "2026-10-22",
+}
 
 
 def numero(valor: str) -> float | None:
@@ -278,9 +300,44 @@ def _evento_curto(e: Evento) -> dict:
     return {"tipo": e.tipo, "id": e.id, "data": e.data.isoformat(), "titulo": e.titulo}
 
 
+def _br(dia: str) -> str:
+    return date.fromisoformat(dia).strftime("%d/%m/%Y")
+
+
+def fora(root: Path) -> list[str]:
+    """The series the ANS stopped updating, in plain words, each with the last period it holds and
+    the day of the copy read (or of the check by hand). A series with no stored copy is left out."""
+    out = []
+    versoes = snapshots.versions(root, TR)
+    if versoes:
+        dia, path = versoes[-1]
+        if meses := [c for r in ev.rows(path) if (c := r["CD_COMPETENCIA"].strip())]:
+            ano, mes = max(meses).split("-")
+            out.append(
+                f"Taxa de resolutividade: o último mês no arquivo da ANS é"
+                f" {MESES[int(mes) - 1]} de {ano} (cópia coletada em {_br(dia)})."
+            )
+    versoes = snapshots.versions(root, GARANTIA)
+    if versoes:
+        dia, path = versoes[-1]
+        if fins := [f for r in ev.rows(path) if (f := r["DT_FIM_COMPETENCIA"].strip())]:
+            fim = date.fromisoformat(max(fins))
+            out.append(
+                "Garantia de atendimento: o último trimestre no arquivo da ANS é o de"
+                f" {MESES[fim.month - 3]} a {MESES[fim.month - 1]} de {fim.year}"
+                f" (cópia coletada em {_br(dia)})."
+            )
+    out.append(
+        "Penalidades aplicadas: a última decisão no arquivo da ANS é de"
+        f" {_br(PENALIDADES['ultima_decisao'])} (conferido em {_br(PENALIDADES['conferido_em'])})."
+    )
+    return out
+
+
 def operadoras(root: Path, todos: list[Evento]) -> list[dict]:
     """Active operators plus those cancelled in the last five years."""
     hoje = date.fromisoformat(snapshots.days(root)[-1])
+    fora_lista = fora(root)
     limite = hoje - timedelta(days=365 * CANCELADAS_ANOS)
     recl, beneficiarios, competencia, ano_antes = reclamacoes(root)
     listas = listas_rn623(root)
@@ -343,7 +400,7 @@ def operadoras(root: Path, todos: list[Evento]) -> list[dict]:
                     ],
                     "eventos": [_evento_curto(e) for e in eventos_op],
                     "fontes": fontes,
-                    "fora": FORA,
+                    "fora": fora_lista,
                 }
             )
     out.sort(key=lambda o: o["registro"])

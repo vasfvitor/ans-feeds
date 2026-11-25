@@ -20,20 +20,7 @@ from . import operadoras, snapshots
 from .atom import Entry, tag_uri
 
 LIMIT = 50
-MESES = (
-    "janeiro",
-    "fevereiro",
-    "março",
-    "abril",
-    "maio",
-    "junho",
-    "julho",
-    "agosto",
-    "setembro",
-    "outubro",
-    "novembro",
-    "dezembro",
-)
+MESES = operadoras.MESES
 
 
 def q(s: str) -> str:

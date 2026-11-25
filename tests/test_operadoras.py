@@ -179,3 +179,45 @@ def test_clients_a_year_before_the_latest_month(tree):
         operadoras.mes_antes("2026-01", 12) == "2025-01"
         and operadoras.mes_antes("2026-01", 1) == "2025-12"
     )
+
+
+def test_fora_reads_the_last_period_from_the_stored_copy(tree):
+    write_day(
+        tree,
+        "2026-10-22",
+        {
+            operadoras.GARANTIA: "COMPETENCIA;DT_INICIO_COMPETENCIA;DT_FIM_COMPETENCIA;X\n"
+            '"1º Trim./2024";"2024-01-01";"2024-03-31";1\n'
+            '"4º Trim./2024";"2024-10-01";"2024-12-31";1\n',
+        },
+    )
+    write_day(
+        tree,
+        "2026-11-10",
+        {operadoras.TR: 'CD_REGISTRO_ANS;CD_COMPETENCIA\n"1";"2019-10"\n"1";"2019-09"\n'},
+    )
+    assert operadoras.fora(tree) == [
+        "Taxa de resolutividade: o último mês no arquivo da ANS é outubro de 2019"
+        " (cópia coletada em 10/11/2026).",
+        "Garantia de atendimento: o último trimestre no arquivo da ANS é o de outubro a dezembro"
+        " de 2024 (cópia coletada em 22/10/2026).",
+        "Penalidades aplicadas: a última decisão no arquivo da ANS é de 31/03/2025"
+        " (conferido em 22/10/2026).",
+    ]
+
+
+def test_fora_leaves_out_a_series_with_no_copy(tree):
+    write_day(tree, "2026-10-22", {"outro.csv": "x"})
+    assert operadoras.fora(tree) == [
+        "Penalidades aplicadas: a última decisão no arquivo da ANS é de 31/03/2025"
+        " (conferido em 22/10/2026).",
+    ]
+
+
+def test_fora_on_the_frozen_tree(congelados):
+    assert operadoras.fora(congelados)[:2] == [
+        "Taxa de resolutividade: o último mês no arquivo da ANS é outubro de 2019"
+        " (cópia coletada em 22/10/2026).",
+        "Garantia de atendimento: o último trimestre no arquivo da ANS é o de outubro a dezembro"
+        " de 2024 (cópia coletada em 22/10/2026).",
+    ]
