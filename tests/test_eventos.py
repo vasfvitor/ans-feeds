@@ -64,6 +64,7 @@ def test_visto_em_for_a_cancellation_that_shows_up_later(tree):
     assert e.visto_em == datetime(2026, 10, 31, 10, 30, 5, tzinfo=timezone.utc)
     assert e.updated == e.visto_em
     assert sum(1 for x in canc.values() if x.visto_em) == 1
+    assert e.detalhes["Registro na ANS desde"] == "02/01/2020"  # not the file's 2020-01-02
 
 
 def test_real_snapshots():

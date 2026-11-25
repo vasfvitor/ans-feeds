@@ -60,6 +60,14 @@ def rows(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(f, delimiter=";"))
 
 
+def _br(dia: str) -> str:
+    """An ISO day as DD/MM/AAAA; anything else (empty, another format) as it is."""
+    try:
+        return date.fromisoformat(dia.strip()).strftime("%d/%m/%Y")
+    except ValueError:
+        return dia.strip()
+
+
 def source_url(root: Path, name: str) -> str:
     cols = snapshots.estado(root, name)
     return cols[1] if cols and len(cols) > 1 else ""
@@ -113,7 +121,7 @@ def cancelamentos(root: Path) -> list[Evento]:
                 detalhes={
                     "Motivo": motivo,
                     **_cadop_detalhes(r),
-                    "Registro na ANS desde": r["DATA_REGISTRO_ANS"],
+                    "Registro na ANS desde": _br(r["DATA_REGISTRO_ANS"]),
                 },
                 fonte=fonte,
                 arquivo=CANCELADAS,
