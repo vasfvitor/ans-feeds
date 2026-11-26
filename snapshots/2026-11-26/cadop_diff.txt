@@ -1,0 +1,7 @@
+### Relatorio_cadop.csv (snapshots/2026-11-25 → snapshots/2026-11-26): 1101 → 1100; entraram 0, saíram 1, alterados 1
+  - 420018 VECTORIAL ADMINISTRADORA DE BENEFÍCIOS LTDA
+  campos alterados: {'REPRESENTANTE': 1}
+  ~ 359122 {'REPRESENTANTE': ('KLEBER JUNIOR SILVEIRA', 'KLEBER JUNIO SILVEIRA')}
+### Relatorio_cadop_canceladas.csv (snapshots/2026-11-24 → snapshots/2026-11-26): 3085 → 3086; entraram 1, saíram 0, alterados 0
+  + 420018 VECTORIAL ADMINISTRADORA DE BENEFÍCIOS LTDA 2026-11-24 Alternat. à Liquidação - Deliberação de Diretoria Colegiada
+  campos alterados: {}
